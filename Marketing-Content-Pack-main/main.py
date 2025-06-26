@@ -1,7 +1,9 @@
 from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse
+from fastapi.staticfiles import StaticFiles
 from routes import stripe_checkout
 import logging
+import os
 
 app = FastAPI()
 app.include_router(stripe_checkout.router)
@@ -9,9 +11,13 @@ app.include_router(stripe_checkout.router)
 # Setup logging
 logging.basicConfig(level=logging.INFO)
 
+# Mount static directory for serving index.html and other static files
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
+# Serve index.html at root
 @app.get("/")
-async def root():
-    return {"message": "✅ Marketing Content Pack API is running!"}
+async def serve_index():
+    return FileResponse(os.path.join("static", "index.html"))
 
 @app.get("/healthz")
 async def healthcheck():
