@@ -1,0 +1,7 @@
+fastapi
+uvicorn
+stripe
+fpdf
+python-dotenv
+requests
+openai==1.12.0
