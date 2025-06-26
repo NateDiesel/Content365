@@ -3,3 +3,7 @@ from routes import stripe_checkout
 
 app = FastAPI()
 app.include_router(stripe_checkout.router)
+
+@app.get("/")
+async def root():
+    return {"message": "Marketing Content Pack API is running!"}
