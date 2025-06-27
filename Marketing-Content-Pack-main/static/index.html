@@ -10,10 +10,25 @@
   <div class="max-w-lg mx-auto mt-10 p-6 bg-white rounded-lg shadow-lg border border-gray-200">
     <h1 class="text-4xl font-bold mb-4 text-center">AI Content Pack Pro</h1>
     <p class="mb-2 text-center">Instant custom content pack: blog, social posts, lead magnet, SEO keywords.</p>
-    <p class="mb-6 text-sm text-gray-600 text-center">One-time payment — no subscription. Delivered immediately as a downloadable PDF.</p>
-    <button id="buyBtn" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 w-full shadow-lg transition duration-300 ease-in-out transform hover:scale-105">
-      Buy Now for $19
-    </button>
+    <p class="mb-6 text-sm text-gray-600 text-center">One-time payment — no subscription. Delivered immediately as a downloadable PDF + emailed copy.</p>
+
+    <form id="checkoutForm" class="flex flex-col gap-4">
+      <input
+        type="email"
+        name="email"
+        id="email"
+        placeholder="Enter your email"
+        required
+        class="px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+      />
+      <button
+        type="submit"
+        class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 w-full shadow-lg transition duration-300 ease-in-out transform hover:scale-105"
+      >
+        Buy Now for $19
+      </button>
+    </form>
+
     <p class="mt-4 text-xs text-center text-gray-400 flex items-center justify-center gap-1">
       <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 11c0 .656-.053 1.246-.151 1.748M17.657 16.657A8 8 0 1112 4v0m0 0V4a8 8 0 015.657 12.657z" />
@@ -21,25 +36,31 @@
       Secure checkout powered by Stripe
     </p>
   </div>
+
   <script>
-    const btn = document.getElementById("buyBtn");
-    btn.addEventListener("click", async () => {
-      btn.disabled = true;
-      btn.innerText = "Processing...";
+    const form = document.getElementById("checkoutForm");
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const email = document.getElementById("email").value;
+
+      const button = form.querySelector("button");
+      button.disabled = true;
+      button.innerText = "Processing...";
+
       try {
-        const res = await fetch("/create-checkout-session");
+        const res = await fetch(`/create-checkout-session?email=${encodeURIComponent(email)}`);
         const data = await res.json();
         if (data.url) {
           window.location = data.url;
         } else {
           alert("Could not create checkout session. Please try again.");
-          btn.disabled = false;
-          btn.innerText = "Buy Now for $19";
+          button.disabled = false;
+          button.innerText = "Buy Now for $19";
         }
       } catch (e) {
         alert("An error occurred. Please refresh the page and try again.");
-        btn.disabled = false;
-        btn.innerText = "Buy Now for $19";
+        button.disabled = false;
+        button.innerText = "Buy Now for $19";
       }
     });
   </script>
