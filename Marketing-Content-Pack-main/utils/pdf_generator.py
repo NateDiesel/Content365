@@ -2,21 +2,23 @@ import openai
 from fpdf import FPDF
 import os
 
-client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+# Configure Together.ai credentials
+openai.api_key = os.getenv("TOGETHER_API_KEY")
+openai.api_base = "https://api.together.xyz/v1"
 
 def call_gpt(prompt, max_tokens=300):
-    response = client.chat.completions.create(
-        model="gpt-3.5-turbo",
+    response = openai.ChatCompletion.create(
+        model="mistralai/Mistral-7B-Instruct-v0.1",
         messages=[
             {"role": "system", "content": "You are a helpful assistant."},
             {"role": "user", "content": prompt}
         ],
         max_tokens=max_tokens
     )
-    return response.choices[0].message.content.strip()
+    return response.choices[0].message["content"].strip()
 
 def generate_dynamic_pdf(topic="digital marketing"):
-    print(f"OpenAI version loaded: {openai.__version__}")
+    print(f"Using Together.ai to generate content for: {topic}")
 
     blog_post = call_gpt(f"Write a 300-word blog post about {topic}.")
     captions = call_gpt(f"Write 3 engaging social media captions about {topic}.")
