@@ -1,29 +1,29 @@
-import openai
 from fpdf import FPDF
 import os
+import together
 
-# Configure Together.ai credentials
-openai.api_key = os.getenv("TOGETHER_API_KEY")
-openai.api_base = "https://api.together.xyz/v1"
+together.api_key = os.getenv("TOGETHER_API_KEY")
 
-def call_gpt(prompt, max_tokens=300):
-    response = openai.ChatCompletion.create(
-        model="mistralai/Mistral-7B-Instruct-v0.1",
-        messages=[
-            {"role": "system", "content": "You are a helpful assistant."},
-            {"role": "user", "content": prompt}
-        ],
-        max_tokens=max_tokens
-    )
-    return response.choices[0].message["content"].strip()
+def call_together(prompt, max_tokens=300):
+    try:
+        response = together.Complete.create(
+            prompt=prompt,
+            model="togethercomputer/llama-2-70b-chat",
+            max_tokens=max_tokens,
+            temperature=0.7,
+        )
+        return response['output']['choices'][0]['text'].strip()
+    except Exception as e:
+        print("❌ Together.ai error:", str(e))
+        return "Error generating content."
 
 def generate_dynamic_pdf(topic="digital marketing"):
     print(f"Using Together.ai to generate content for: {topic}")
 
-    blog_post = call_gpt(f"Write a 300-word blog post about {topic}.")
-    captions = call_gpt(f"Write 3 engaging social media captions about {topic}.")
-    lead_magnet = call_gpt(f"Suggest a compelling lead magnet idea for {topic}.")
-    keywords = call_gpt(f"List 5 SEO keywords for {topic}, comma separated.")
+    blog_post = call_together(f"Write a 300-word blog post about {topic}.")
+    captions = call_together(f"Write 3 engaging social media captions about {topic}.")
+    lead_magnet = call_together(f"Suggest a compelling lead magnet idea for {topic}.")
+    keywords = call_together(f"List 5 SEO keywords for {topic}, comma separated.")
 
     pdf = FPDF()
     pdf.add_page()
