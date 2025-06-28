@@ -4,6 +4,8 @@ from fastapi.staticfiles import StaticFiles
 from routes import stripe_checkout
 import logging
 import os
+from dotenv import load_dotenv
+load_dotenv()
 
 app = FastAPI()
 app.include_router(stripe_checkout.router)

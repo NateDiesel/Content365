@@ -1,6 +1,6 @@
 # Marketing Content Pack API
 
-✅ **Live URL:** https://your-app-url.up.railway.app  
+✅ **Live URL:** https://marketing-content-pack-production.up.railway.app  
 ✅ **Tech:** Python, FastAPI, Uvicorn, Stripe, Railway
 
 ## Features

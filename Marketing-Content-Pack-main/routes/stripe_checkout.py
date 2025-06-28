@@ -1,15 +1,18 @@
 from fastapi import APIRouter, HTTPException, BackgroundTasks
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, HTMLResponse
 import stripe
 import os
 from utils.pdf_generator import generate_dynamic_pdf
+from utils.email_sender import send_pdf_email
 
 router = APIRouter()
 
+# Load environment variables
 STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY", "").strip()
 PRICE_ID = os.getenv("STRIPE_PRICE_ID", "").strip()
 APP_URL = os.getenv("APP_URL", "").strip().rstrip('/')
 
+# Validate Stripe config
 if not STRIPE_SECRET_KEY:
     raise RuntimeError("STRIPE_SECRET_KEY is missing.")
 if not PRICE_ID:
@@ -40,8 +43,44 @@ async def success(background_tasks: BackgroundTasks):
     try:
         print("Generating dynamic PDF...")
         pdf_path = generate_dynamic_pdf(topic="digital marketing")
+        filename = os.path.basename(pdf_path)
+
+        # Email it to the user
+        recipient_email = "mnb.mushrooms@gmail.com"
+        send_pdf_email(recipient_email, pdf_path)
+
+        # Schedule deletion of the file
         background_tasks.add_task(os.remove, pdf_path)
-        return FileResponse(pdf_path, media_type='application/pdf', filename="content_pack.pdf")
+
+        # Display success confirmation page
+        html_content = f"""
+        <html>
+        <head>
+            <title>Success</title>
+            <meta http-equiv="refresh" content="5;url=/static/index.html">
+        </head>
+        <body style="font-family: sans-serif; text-align: center; padding: 40px;">
+            <h1>✅ Content Pack Sent!</h1>
+            <p>Your AI-generated content pack is being downloaded and has also been emailed to <strong>{recipient_email}</strong>.</p>
+            <p>If the download doesn't start automatically, <a href='/download?file={filename}'>click here</a>.</p>
+            <p>You’ll be redirected to create another in 5 seconds.</p>
+            <script>
+                setTimeout(function() {{
+                    window.location.href = "/download?file={filename}";
+                }}, 1000);
+            </script>
+        </body>
+        </html>
+        """
+        return HTMLResponse(content=html_content)
     except Exception as e:
         print(f"PDF generation failed: {e}")
         raise HTTPException(status_code=500, detail="Failed to generate content pack.")
+
+@router.get("/download")
+async def download(file: str):
+    path = f"./{file}"
+    if os.path.exists(path):
+        return FileResponse(path, media_type='application/pdf', filename=file)
+    else:
+        raise HTTPException(status_code=404, detail="File not found.")

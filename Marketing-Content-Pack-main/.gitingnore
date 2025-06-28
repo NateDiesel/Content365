@@ -1,0 +1,6 @@
+.env
+*.pyc
+__pycache__/
+content_pack.pdf
+.vscode/
+.DS_Store
