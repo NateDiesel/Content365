@@ -1,5 +1,6 @@
 from fpdf import FPDF
 import os
+import uuid
 import together
 
 together.api_key = os.getenv("TOGETHER_API_KEY")
@@ -8,7 +9,7 @@ def call_together(prompt, max_tokens=300):
     try:
         response = together.Complete.create(
             prompt=prompt,
-            model="togethercomputer/llama-2-70b-chat",
+            model="mistralai/Mixtral-8x7B-Instruct-v0.1",
             max_tokens=max_tokens,
             temperature=0.7,
         )
@@ -40,6 +41,6 @@ def generate_dynamic_pdf(topic="digital marketing"):
     pdf.ln(5)
     pdf.multi_cell(0, 10, f"SEO Keywords:\n{keywords}")
 
-    path = "./content_pack.pdf"
-    pdf.output(path)
-    return path
+    filename = f"./content_pack_{uuid.uuid4().hex}.pdf"
+    pdf.output(filename)
+    return filename
