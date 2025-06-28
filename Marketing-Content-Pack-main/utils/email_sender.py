@@ -1,35 +1,46 @@
+from fpdf import FPDF
 import os
-import sendgrid
-from sendgrid.helpers.mail import Mail, Attachment, FileContent, FileName, FileType, Disposition
-import base64
+import together
 
-def send_pdf_email(to_email, pdf_path, subject="Your AI Content Pack", content="Please find your generated content pack attached."):
-    sg = sendgrid.SendGridAPIClient(api_key=os.getenv("SENDGRID_API_KEY"))
-    from_email = os.getenv("FROM_EMAIL")
+together.api_key = os.getenv("TOGETHER_API_KEY")
+os.getenv("SENDGRID_API_KEY")
 
-    with open(pdf_path, 'rb') as f:
-        data = f.read()
-        encoded = base64.b64encode(data).decode()
-
-    attachment = Attachment(
-        FileContent(encoded),
-        FileName("content_pack.pdf"),
-        FileType("application/pdf"),
-        Disposition("attachment")
-    )
-
-    message = Mail(
-        from_email=from_email,
-        to_emails=to_email,
-        subject=subject,
-        html_content=content
-    )
-    message.attachment = attachment
-
+def call_together(prompt, max_tokens=300):
     try:
-        response = sg.send(message)
-        print(f"Email sent: {response.status_code}")
-        return True
+        response = together.Complete.create(
+            prompt=prompt,
+            model="togethercomputer/llama-2-70b-chat",
+            max_tokens=max_tokens,
+            temperature=0.7,
+        )
+        return response['output']['choices'][0]['text'].strip()
     except Exception as e:
-        print(f"Failed to send email: {e}")
-        return False
+        print("❌ Together.ai error:", str(e))
+        return "Error generating content."
+
+def generate_dynamic_pdf(topic="digital marketing"):
+    print(f"Using Together.ai to generate content for: {topic}")
+
+    blog_post = call_together(f"Write a 300-word blog post about {topic}.")
+    captions = call_together(f"Write 3 engaging social media captions about {topic}.")
+    lead_magnet = call_together(f"Suggest a compelling lead magnet idea for {topic}.")
+    keywords = call_together(f"List 5 SEO keywords for {topic}, comma separated.")
+
+    pdf = FPDF()
+    pdf.add_page()
+    pdf.set_font("Arial", size=12)
+
+    pdf.cell(200, 10, txt="AI Content Pack Pro", ln=True, align="C")
+    pdf.ln(10)
+
+    pdf.multi_cell(0, 10, f"Blog Post Draft:\n{blog_post}")
+    pdf.ln(5)
+    pdf.multi_cell(0, 10, f"Social Media Captions:\n{captions}")
+    pdf.ln(5)
+    pdf.multi_cell(0, 10, f"Lead Magnet Idea:\n{lead_magnet}")
+    pdf.ln(5)
+    pdf.multi_cell(0, 10, f"SEO Keywords:\n{keywords}")
+
+    path = "./content_pack.pdf"
+    pdf.output(path)
+    return path
