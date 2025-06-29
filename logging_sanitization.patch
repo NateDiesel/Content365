@@ -1,0 +1,84 @@
+@"
+diff --git a/main.py b/main.py
+index 0000000..1111111 100644
+--- a/main.py
++++ b/main.py
+@@
+ import stripe
+ import os
+ import uuid
++import re
++import csv
++from datetime import datetime
+
+ from utils.pdf_generator import generate_dynamic_pdf
+
+@@
+ app.mount("/static", StaticFiles(directory="static"), name="static")
+
++def sanitize_input(text: str, max_len: int = 100) -> str:
++    text = re.sub(r'[^\w\s\-\.\,\!\?]', '', text)
++    return text.strip()[:max_len]
++
++def log_session(email, topic, tone, style, audience, filename):
++    os.makedirs("logs", exist_ok=True)
++    log_path = "logs/content_log.csv"
++    headers = ["timestamp", "email", "topic", "tone", "style", "audience", "filename"]
++    timestamp = datetime.now().isoformat()
++    data = [timestamp, email, topic, tone, style, audience, filename]
++    write_header = not os.path.exists(log_path)
++    with open(log_path, "a", newline="", encoding="utf-8") as csvfile:
++        writer = csv.writer(csvfile)
++        if write_header:
++            writer.writerow(headers)
++        writer.writerow(data)
+
+@@
+ @app.get("/buy", response_class=HTMLResponse)
+ async def buy_now(request: Request, topic: str, tone: str = "", style: str = "", audience: str = "", email: str = ""):
+     try:
++        topic = sanitize_input(topic)
++        tone = sanitize_input(tone)
++        style = sanitize_input(style)
++        audience = sanitize_input(audience)
++        email = sanitize_input(email, max_len=150)
+
+         session = stripe.checkout.Session.create(
+             payment_method_types=["card"],
+             line_items=[{"price": PRICE_ID, "quantity": 1}],
+             mode="payment",
+-            success_url=f"{APP_URL}/success?session_id={{CHECKOUT_SESSION_ID}}&topic={topic}&tone={tone}&style={style}&audience={audience}",
++            success_url=f"{APP_URL}/success?session_id={{CHECKOUT_SESSION_ID}}&topic={topic}&tone={tone}&style={style}&audience={audience}&email={email}",
+             cancel_url=f"{APP_URL}/",
+         )
+
+         print(f"✅ Stripe Checkout URL: {session.url}")
+@@
+ @app.get("/success", response_class=HTMLResponse)
+ async def success(topic: str, session_id: str, background_tasks: BackgroundTasks,
+-                  tone: str = "", style: str = "", audience: str = ""):
++                  tone: str = "", style: str = "", audience: str = "", email: str = ""):
+     print(f"✅ Stripe payment successful. Generating PDF for: {topic}")
+     print(f"🧠 Style: {style} | Tone: {tone} | Audience: {audience}")
+
+-    pdf_path = generate_dynamic_pdf(topic, tone=tone, style=style, audience=audience)
++    topic = sanitize_input(topic)
++    tone = sanitize_input(tone)
++    style = sanitize_input(style)
++    audience = sanitize_input(audience)
++    email = sanitize_input(email, max_len=150)
+
++    pdf_path = generate_dynamic_pdf(topic, tone=tone, style=style, audience=audience)
+
+     if not pdf_path or not os.path.exists(pdf_path):
+         return HTMLResponse("<h2>PDF generation failed.</h2>", status_code=500)
+
+     filename = os.path.basename(pdf_path)
+     background_tasks.add_task(os.remove, pdf_path)
++
++    log_session(email=email, topic=topic, tone=tone, style=style, audience=audience, filename=filename)
+
+     return f"""
+     <html>
+     <head><title>Success</title></head>
+"@ | Set-Content -Encoding UTF8 logging_sanitization.patch
