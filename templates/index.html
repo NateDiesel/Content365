@@ -3,71 +3,73 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Content Pack Pro</title>
+  <title>Content365 – Your AI Marketing Coach</title>
+  <meta name="description" content="Generate high-converting marketing content in seconds with Content365 – your AI-powered content assistant."/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
   <style>
     body {
-      font-family: sans-serif;
-      padding: 2rem;
-      max-width: 600px;
-      margin: auto;
+      margin: 0;
+      font-family: 'Inter', sans-serif;
+      background: #f9fafb;
+      color: #1f2937;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
     }
-    h1 {
+    header {
+      background-color: #1e40af;
+      color: white;
+      padding: 2rem 1rem;
       text-align: center;
     }
-    label {
-      display: block;
-      margin: 1rem 0 0.3rem;
+    header h1 {
+      font-size: 2.25rem;
+      margin-bottom: 0.5rem;
     }
-    input, textarea, select {
-      width: 100%;
-      padding: 0.6rem;
-      font-size: 1rem;
-      margin-bottom: 1rem;
+    header p {
+      font-size: 1.125rem;
     }
-    button {
-      padding: 0.8rem 1.5rem;
+    main {
+      flex: 1;
+      padding: 2rem 1rem;
+      max-width: 700px;
+      margin: auto;
+      text-align: center;
+    }
+    .cta-button {
+      margin-top: 2rem;
+      padding: 1rem 2rem;
       font-size: 1rem;
-      background: #0070f3;
+      font-weight: 600;
       color: white;
+      background-color: #3b82f6;
       border: none;
+      border-radius: 8px;
       cursor: pointer;
-      width: 100%;
     }
-    button:hover {
-      background: #0059c1;
+    .cta-button:hover {
+      background-color: #2563eb;
+    }
+    footer {
+      background: #f3f4f6;
+      text-align: center;
+      padding: 1rem;
+      font-size: 0.875rem;
     }
   </style>
 </head>
 <body>
-  <h1>📦 Content Pack Pro</h1>
-  <form action="/generate" method="post">
-    <label for="topic">Topic</label>
-    <input type="text" id="topic" name="topic" required />
-
-    <label for="tone">Tone</label>
-    <select name="tone" id="tone">
-      <option value="">Default</option>
-      <option value="Professional">Professional</option>
-      <option value="Friendly">Friendly</option>
-      <option value="Bold">Bold</option>
-      <option value="Inspiring">Inspiring</option>
-    </select>
-
-    <label for="style">Style</label>
-    <select name="style" id="style">
-      <option value="">Default</option>
-      <option value="Storytelling">Storytelling</option>
-      <option value="Listicle">Listicle</option>
-      <option value="Case Study">Case Study</option>
-    </select>
-
-    <label for="audience">Target Audience</label>
-    <input type="text" id="audience" name="audience" placeholder="e.g. realtors, freelancers" />
-
-    <label for="email">Email (for delivery)</label>
-    <input type="email" id="email" name="email" required />
-
-    <button type="submit">Generate My Pack</button>
-  </form>
+  <header>
+    <h1>Content365</h1>
+    <p>Your AI co-pilot for 365 days of marketing magic.</p>
+  </header>
+  <main>
+    <h2>Ready to generate content that connects?</h2>
+    <p>Our AI Marketing Coach will help you craft blog posts, social captions, lead magnets, and more — tailored to your brand and goals.</p>
+    <a href="/form"><button class="cta-button">Launch Content Coach</button></a>
+  </main>
+  <footer>
+    &copy; 2025 Content365. No data stored. AI-powered. Results you control.
+  </footer>
 </body>
 </html>
