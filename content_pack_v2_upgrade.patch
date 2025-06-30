@@ -1,0 +1,269 @@
+
+diff --git a/email_sender.py b/email_sender.py
+new file mode 100644
+index 0000000..b1e5b3a
+--- /dev/null
++++ b/email_sender.py
+@@ -0,0 +1,28 @@
++import os
++from sendgrid import SendGridAPIClient
++from sendgrid.helpers.mail import Mail, Attachment, FileContent, FileName, FileType, Disposition
++import base64
++
++def send_pdf_email(recipient_email, file_path, topic="AI Content Pack"):
++    try:
++        with open(file_path, "rb") as f:
++            data = f.read()
++        encoded_file = base64.b64encode(data).decode()
++
++        message = Mail(
++            from_email=os.getenv("EMAIL_FROM"),
++            to_emails=recipient_email,
++            subject=os.getenv("EMAIL_SUBJECT", "Your Content Pack is Ready!"),
++            html_content=f"<p>Your AI Content Pack on <strong>{topic}</strong> is attached.</p>"
++        )
++        attached_file = Attachment(
++            FileContent(encoded_file),
++            FileName(os.path.basename(file_path)),
++            FileType("application/pdf"),
++            Disposition("attachment")
++        )
++        message.attachment = attached_file
++
++        sg = SendGridAPIClient(os.getenv("SENDGRID_API_KEY"))
++        sg.send(message)
++        print(f"📧 Sent to {recipient_email}")
++    except Exception as e:
++        print("❌ Email send failed:", e)
+
+diff --git a/app.py b/app.py
+index 3dfcc9f..bd8c25e 100644
+--- a/app.py
++++ b/app.py
+@@ -1,6 +1,9 @@
+ from flask import Flask, request, send_file, render_template, redirect, url_for
+ from pdf_generator import generate_dynamic_pdf
+ import os
++import stripe
++from dotenv import load_dotenv
++
++load_dotenv()
+
+ app = Flask(__name__)
++
++stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
++ENABLE_PAYWALL = os.getenv("ENABLE_PAYWALL", "False") == "True"
+
+ @app.route("/", methods=["GET", "POST"])
+ def index():
+     if request.method == "POST":
+         topic = request.form.get("topic")
+         tone = request.form.get("tone")
+         style = request.form.get("style")
+         audience = request.form.get("audience")
+         email = request.form.get("email")
++
++        if ENABLE_PAYWALL:
++            session = stripe.checkout.Session.create(
++                payment_method_types=["card"],
++                line_items=[{
++                    "price": os.getenv("STRIPE_PRICE_ID"),
++                    "quantity": 1
++                }],
++                mode="payment",
++                success_url=url_for("success", _external=True) + "?session_id={CHECKOUT_SESSION_ID}",
++                cancel_url=url_for("index", _external=True),
++                metadata={
++                    "topic": topic,
++                    "tone": tone,
++                    "style": style,
++                    "audience": audience,
++                    "email": email
++                }
++            )
++            return redirect(session.url, code=303)
++        else:
++            filepath = generate_dynamic_pdf(topic, tone, style, audience, email)
++            if filepath:
++                filename = os.path.basename(filepath)
++                return render_template("preview.html", filepath=filename)
+
+     return render_template("form.html")
+
++@app.route("/success")
++def success():
++    session_id = request.args.get("session_id")
++    session = stripe.checkout.Session.retrieve(session_id)
++    meta = session.metadata
++    filepath = generate_dynamic_pdf(meta["topic"], meta["tone"], meta["style"], meta["audience"], meta["email"])
++    if filepath:
++        filename = os.path.basename(filepath)
++        return render_template("preview.html", filepath=filename)
++    return "PDF generation failed", 500
+
+ @app.route("/download/<filename>")
+ def download(filename):
+     return send_file(f"generated_pdfs/{filename}", as_attachment=True)
+
+ @app.route("/preview/<filename>")
+ def preview(filename):
+     return send_file(f"generated_pdfs/{filename}")
++
++if __name__ == "__main__":
++    app.run(port=8000)
+
+diff --git a/templates/form.html b/templates/form.html
+new file mode 100644
+index 0000000..87e60e2
+--- /dev/null
++++ b/templates/form.html
+@@ -0,0 +1,20 @@
++<h2>Generate AI Content Pack</h2>
++<form method="post">
++  <input name="topic" placeholder="Topic" required><br><br>
++  <label>Tone:</label>
++  <select name="tone">
++    <option value="">-- Select --</option>
++    <option>Professional</option>
++    <option>Casual</option>
++    <option>Salesy</option>
++    <option>Playful</option>
++  </select><br><br>
++  <label>Style:</label>
++  <select name="style">
++    <option value="">-- Select --</option>
++    <option>Blog</option>
++    <option>Newsletter</option>
++    <option>Short-form</option>
++  </select><br><br>
++  <input name="audience" placeholder="Audience (optional)"><br><br>
++  <input name="email" placeholder="Your Email (for delivery)" required><br><br>
++  <button type="submit">Generate PDF</button>
++</form>
+
+diff --git a/templates/preview.html b/templates/preview.html
+new file mode 100644
+index 0000000..504d789
+--- /dev/null
++++ b/templates/preview.html
+@@ -0,0 +1,5 @@
++<h2>Your Content Pack is Ready!</h2>
++<a href="/download/{{ filepath }}">⬇️ Download PDF</a>
++<hr>
++<iframe src="/preview/{{ filepath }}" width="100%" height="600px"></iframe>
+
+diff --git a/pdf_generator.py b/pdf_generator.py
+index 7c3b041..d9be4f2 100644
+--- a/pdf_generator.py
++++ b/pdf_generator.py
+@@ -1,6 +1,7 @@
+ from fpdf import FPDF
+ from fpdf.enums import XPos, YPos
+ import os
++import traceback
+ import uuid
+ import together
+ from dotenv import load_dotenv
+ from datetime import datetime
+@@ -13,8 +14,8 @@
+ LOGO_PATH = "assets/logo.png"
+ FONT_REGULAR = "fonts/DejaVuSans.ttf"
+ FONT_BOLD = "fonts/DejaVuSans-Bold.ttf"
+
+ class PDF(FPDF):
+     def header(self):
+         if os.path.exists(LOGO_PATH):
+             self.image(LOGO_PATH, x=10, y=8, w=30)
+             self.ln(25)
+         self.set_font("DejaVu", "B", 16)
+         self.cell(0, 10, "AI Content Pack Pro", new_x=XPos.LMARGIN, new_y=YPos.NEXT, align="C")
+         self.set_font("DejaVu", "", 11)
+         self.cell(0, 10, datetime.now().strftime("Generated on %B %d, %Y"), new_x=XPos.LMARGIN, new_y=YPos.NEXT, align="C")
+         self.ln(5)
+         self.set_draw_color(180, 180, 180)
+         self.line(10, self.get_y(), 200, self.get_y())
+         self.ln(10)
+
+ def call_together(prompt, max_tokens=300):
+     print(f"🔍 Prompt: {prompt[:60]}...")
+     try:
+         response = together.Complete.create(
+             prompt=prompt,
+             model="mistralai/Mixtral-8x7B-Instruct-v0.1",
+             max_tokens=max_tokens,
+             temperature=0.7,
+         )
+         return response.get('choices', [{}])[0].get('text', '').strip() or "[Empty response]"
+     except Exception as e:
+         print("❌ Together.ai error:", e)
+         return "[Error generating content]"
+
+ def generate_dynamic_pdf(topic, tone="", style="", audience="", recipient_email=None, save_dir="generated_pdfs"):
+     print(f"📝 Generating content pack for topic: {topic}")
+
+     if not os.getenv("TOGETHER_API_KEY"):
+         print("❌ TOGETHER_API_KEY is missing.")
+         return None
+
+     if not os.path.exists(FONT_REGULAR) or not os.path.exists(FONT_BOLD):
+         print("❌ Font files not found.")
+         return None
+
+     blog_prompt = f"Write a 300-word {tone.lower()} {style.lower()} article about {topic}." if tone and style else f"Write a 300-word blog post about {topic}."
+     blog_post = call_together(blog_prompt)
+     captions = call_together(f"Write 3 engaging social media captions about {topic} in a {tone.lower()} tone." if tone else f"Write 3 social media captions about {topic}.")
+     lead_magnet = call_together(f"Suggest a compelling lead magnet idea for {topic}.")
+     keywords = call_together(f"List 5 SEO keywords for {topic}, comma separated.")
+
+     try:
+         pdf = PDF()
+         pdf.add_font("DejaVu", "", FONT_REGULAR)
+         pdf.add_font("DejaVu", "B", FONT_BOLD)
+         pdf.set_auto_page_break(auto=True, margin=15)
+         pdf.add_page()
+
+         pdf.set_font("DejaVu", "B", 14)
+         pdf.cell(0, 10, "📌 Quick Summary", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+         pdf.set_font("DejaVu", "", 12)
+         pdf.multi_cell(0, 8, f"Topic: {topic}\nAudience: {audience}\nTone: {tone}\nStyle: {style}")
+         pdf.ln(8)
+
+         content_blocks = [
+             ("📄 Blog Post", blog_post),
+             ("💬 Social Media Captions", captions),
+             ("🎁 Lead Magnet Idea", lead_magnet),
+             ("🔍 SEO Keywords", keywords),
+         ]
+
+         for title, content in content_blocks:
+             pdf.set_font("DejaVu", "B", 14)
+             pdf.cell(0, 10, title, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+             pdf.set_font("DejaVu", "", 12)
+             pdf.multi_cell(0, 8, content)
+             pdf.ln(5)
+
+         pdf.set_text_color(0, 102, 204)
+         pdf.set_font("DejaVu", "", 11)
+         pdf.cell(0, 10, "Create your own content pack at: ResumePilot.ai",
+                  new_x=XPos.LMARGIN, new_y=YPos.NEXT, link="https://resumepilot.ai")
+
+         os.makedirs(save_dir, exist_ok=True)
+         filename = os.path.join(save_dir, f"content_pack_{uuid.uuid4().hex}.pdf")
+         pdf.output(filename)
+
+         print(f"✅ PDF saved to: {filename}")
+
+         if recipient_email and os.getenv("SENDGRID_API_KEY"):
+             try:
+                 from email_sender import send_pdf_email
+                 send_pdf_email(recipient_email, filename, topic)
+             except Exception as e:
+                 print("⚠️ Email skipped:", e)
+                 traceback.print_exc()
+
+         return filename
+
+     except Exception as e:
+         print("❌ PDF generation error:", e)
+         traceback.print_exc()
+         return None

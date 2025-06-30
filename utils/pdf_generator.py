@@ -4,13 +4,8 @@ import os
 import uuid
 import together
 from dotenv import load_dotenv
-import sys
 from datetime import datetime
-
-# Toggle this to True if you want to enable email sending
-SEND_EMAIL = False
-if SEND_EMAIL:
-    from email_sender import send_pdf_email
+import traceback
 
 load_dotenv()
 
@@ -21,19 +16,20 @@ FONT_BOLD = "fonts/DejaVuSans-Bold.ttf"
 class PDF(FPDF):
     def header(self):
         if os.path.exists(LOGO_PATH):
-            self.image(LOGO_PATH, x=10, y=8, w=30)
+            # Future logo support
+            # self.image(LOGO_PATH, x=10, y=8, w=30)
             self.ln(25)
-        self.set_font("DejaVu", "B", 16)
-        self.cell(0, 10, "AI Content Pack Pro", new_x=XPos.LMARGIN, new_y=YPos.NEXT, align="C")
+        self.set_font("DejaVu", "B", 18)
+        self.cell(0, 12, "Content365: AI Marketing Pack", new_x=XPos.LMARGIN, new_y=YPos.NEXT, align="C")
         self.set_font("DejaVu", "", 11)
         self.cell(0, 10, datetime.now().strftime("Generated on %B %d, %Y"), new_x=XPos.LMARGIN, new_y=YPos.NEXT, align="C")
         self.ln(5)
-        self.set_draw_color(180, 180, 180)
+        self.set_draw_color(160, 160, 160)
         self.line(10, self.get_y(), 200, self.get_y())
         self.ln(10)
 
 def call_together(prompt, max_tokens=300):
-    print(f"🔍 Calling Together.ai with prompt: {prompt[:60]}...")
+    print(f"🔍 Prompt: {prompt[:60]}...")
     try:
         response = together.Complete.create(
             prompt=prompt,
@@ -41,32 +37,26 @@ def call_together(prompt, max_tokens=300):
             max_tokens=max_tokens,
             temperature=0.7,
         )
-        result = response.get('choices', [{}])[0].get('text', '').strip()
-        print("✅ Response received.")
-        return result if result else "[Empty response]"
+        return response.get('choices', [{}])[0].get('text', '').strip() or "[Empty response]"
     except Exception as e:
-        print("❌ Together.ai error:", str(e))
+        print("❌ Together.ai error:", e)
         return "[Error generating content]"
 
-def generate_dynamic_pdf(topic, tone="", style="", audience="", recipient_email=None):
-    print(f"📝 Starting PDF generation for topic: {topic}")
+def generate_content_pack(topic, audience, tone, platform, notes, output_path):
+    print(f"🧠 Generating Content365 pack for topic: {topic}")
 
-    if not os.getenv("TOGETHER_API_KEY"):
-        print("❌ TOGETHER_API_KEY is missing.")
-        return None
+    blog_prompt = f"Write a 300-word {tone.lower()} marketing article about {topic}."
+    blog_post = call_together(blog_prompt)
 
-    if not os.path.exists(FONT_REGULAR) or not os.path.exists(FONT_BOLD):
-        print("❌ Font files not found. Expected at:")
-        print(f"   - {FONT_REGULAR}")
-        print(f"   - {FONT_BOLD}")
-        return None
+    platform_str = platform or "general social media"
+    caption_prompt = f"""
+    Write 3 engaging, platform-optimized social media captions about "{topic}" in a {tone.lower()} tone.
+    Tailor each caption for {platform_str}. Include relevant hashtags and emojis if appropriate.
+    """
+    captions = call_together(caption_prompt)
 
-    blog_post = call_together(f"Write a 300-word blog post about {topic}.")
-    captions = call_together(f"Write 3 engaging social media captions about {topic}.")
-    lead_magnet = call_together(f"Suggest a compelling lead magnet idea for {topic}.")
+    lead_magnet = call_together(f"Suggest a lead magnet idea for {topic}.")
     keywords = call_together(f"List 5 SEO keywords for {topic}, comma separated.")
-
-    print("📄 Building PDF...")
 
     try:
         pdf = PDF()
@@ -75,63 +65,40 @@ def generate_dynamic_pdf(topic, tone="", style="", audience="", recipient_email=
         pdf.set_auto_page_break(auto=True, margin=15)
         pdf.add_page()
 
-        # 🔹 Quick Summary
+        # 🔷 Summary Section
         pdf.set_font("DejaVu", "B", 14)
-        pdf.cell(0, 10, "📌 Quick Summary", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+        pdf.cell(0, 10, "📌 Summary", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
         pdf.set_font("DejaVu", "", 12)
-        pdf.multi_cell(0, 8,
-            f"Topic: {topic}\n"
-            f"Audience: {audience}\n"
-            f"Tone: {tone}\n"
-            f"Style: {style}"
-        )
+        pdf.multi_cell(0, 8, f"Topic: {topic}\nAudience: {audience}\nTone: {tone}\nPlatform: {platform}")
+        if notes:
+            pdf.ln(4)
+            pdf.set_font("DejaVu", "B", 12)
+            pdf.cell(0, 10, "📝 Notes:", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+            pdf.set_font("DejaVu", "", 12)
+            pdf.multi_cell(0, 8, notes)
+
         pdf.ln(8)
 
-        pdf.set_font("DejaVu", "B", 14)
-        pdf.cell(0, 10, "📄 Blog Post", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
-        pdf.set_font("DejaVu", "", 12)
-        pdf.multi_cell(0, 8, blog_post)
-        pdf.ln(5)
+        # 🔷 Content Sections
+        content_blocks = [
+            ("📄 Blog Post", blog_post),
+            ("💬 Social Media Captions", captions),
+            ("🎁 Lead Magnet Idea", lead_magnet),
+            ("🔍 SEO Keywords", keywords),
+        ]
 
-        pdf.set_font("DejaVu", "B", 14)
-        pdf.cell(0, 10, "💬 Social Media Captions", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
-        pdf.set_font("DejaVu", "", 12)
-        pdf.multi_cell(0, 8, captions)
-        pdf.ln(5)
+        for title, content in content_blocks:
+            pdf.set_font("DejaVu", "B", 14)
+            pdf.cell(0, 10, title, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+            pdf.set_font("DejaVu", "", 12)
+            pdf.multi_cell(0, 8, content)
+            pdf.ln(6)
 
-        pdf.set_font("DejaVu", "B", 14)
-        pdf.cell(0, 10, "🎁 Lead Magnet Idea", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
-        pdf.set_font("DejaVu", "", 12)
-        pdf.multi_cell(0, 8, lead_magnet)
-        pdf.ln(5)
-
-        pdf.set_font("DejaVu", "B", 14)
-        pdf.cell(0, 10, "🔍 SEO Keywords", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
-        pdf.set_font("DejaVu", "", 12)
-        pdf.multi_cell(0, 8, keywords)
-        pdf.ln(10)
-
-        pdf.set_text_color(0, 102, 204)
-        pdf.set_font("DejaVu", "", 11)
-        pdf.cell(0, 10, "Create your own content pack at: ResumePilot.ai", new_x=XPos.LMARGIN, new_y=YPos.NEXT, link="https://resumepilot.ai")
-
-        filename = f"./content_pack_{uuid.uuid4().hex}.pdf"
-        with open(filename, "wb") as f:
-            pdf.output(f)
-
-        print(f"✅ PDF generated: {filename}")
-
-        if SEND_EMAIL and recipient_email:
-            send_pdf_email(recipient_email, filename, topic)
-
-        return filename
+        pdf.output(output_path)
+        print(f"✅ Content365 PDF saved: {output_path}")
+        return output_path
 
     except Exception as e:
-        print("❌ PDF generation error:", str(e))
+        print("❌ Error generating PDF:", e)
+        traceback.print_exc()
         return None
-
-if __name__ == "__main__":
-    topic = sys.argv[1] if len(sys.argv) > 1 else "email marketing for realtors"
-    email = sys.argv[2] if len(sys.argv) > 2 else None
-    result = generate_dynamic_pdf(topic, recipient_email=email)
-    print("✅ Done! PDF saved at:", result)
