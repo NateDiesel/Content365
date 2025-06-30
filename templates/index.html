@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Content Pack Pro</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      padding: 2rem;
+      max-width: 600px;
+      margin: auto;
+    }
+    h1 {
+      text-align: center;
+    }
+    label {
+      display: block;
+      margin: 1rem 0 0.3rem;
+    }
+    input, textarea, select {
+      width: 100%;
+      padding: 0.6rem;
+      font-size: 1rem;
+      margin-bottom: 1rem;
+    }
+    button {
+      padding: 0.8rem 1.5rem;
+      font-size: 1rem;
+      background: #0070f3;
+      color: white;
+      border: none;
+      cursor: pointer;
+      width: 100%;
+    }
+    button:hover {
+      background: #0059c1;
+    }
+  </style>
+</head>
+<body>
+  <h1>📦 Content Pack Pro</h1>
+  <form action="/generate" method="post">
+    <label for="topic">Topic</label>
+    <input type="text" id="topic" name="topic" required />
+
+    <label for="tone">Tone</label>
+    <select name="tone" id="tone">
+      <option value="">Default</option>
+      <option value="Professional">Professional</option>
+      <option value="Friendly">Friendly</option>
+      <option value="Bold">Bold</option>
+      <option value="Inspiring">Inspiring</option>
+    </select>
+
+    <label for="style">Style</label>
+    <select name="style" id="style">
+      <option value="">Default</option>
+      <option value="Storytelling">Storytelling</option>
+      <option value="Listicle">Listicle</option>
+      <option value="Case Study">Case Study</option>
+    </select>
+
+    <label for="audience">Target Audience</label>
+    <input type="text" id="audience" name="audience" placeholder="e.g. realtors, freelancers" />
+
+    <label for="email">Email (for delivery)</label>
+    <input type="email" id="email" name="email" required />
+
+    <button type="submit">Generate My Pack</button>
+  </form>
+</body>
+</html>
