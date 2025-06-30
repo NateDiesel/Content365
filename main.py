@@ -131,3 +131,8 @@ async def download(file: str):
     if os.path.exists(path) and file.endswith(".pdf"):
         return FileResponse(path, media_type='application/pdf', filename=file)
     return HTMLResponse("<h2>❌ File not found or invalid request.</h2>", status_code=404)
+
+if __name__ == "__main__":
+    import uvicorn
+    port = int(os.getenv("PORT", 8001))
+    uvicorn.run("main:app", host="0.0.0.0", port=port, reload=True)
