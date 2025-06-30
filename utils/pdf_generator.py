@@ -1,4 +1,5 @@
 from fpdf import FPDF
+from fpdf.enums import XPos, YPos
 import os
 import uuid
 import together
@@ -14,8 +15,8 @@ if SEND_EMAIL:
 load_dotenv()
 
 LOGO_PATH = "assets/logo.png"
-FONT_REGULAR = "fonts/DejaVuSans.ttf"         # ✅ corrected from fonts/ttf/
-FONT_BOLD = "fonts/DejaVuSans-Bold.ttf"       # ✅ corrected from fonts/ttf/
+FONT_REGULAR = "fonts/DejaVuSans.ttf"
+FONT_BOLD = "fonts/DejaVuSans-Bold.ttf"
 
 class PDF(FPDF):
     def header(self):
@@ -23,9 +24,9 @@ class PDF(FPDF):
             self.image(LOGO_PATH, x=10, y=8, w=30)
             self.ln(25)
         self.set_font("DejaVu", "B", 16)
-        self.cell(0, 10, "AI Content Pack Pro", ln=True, align="C")
+        self.cell(0, 10, "AI Content Pack Pro", new_x=XPos.LMARGIN, new_y=YPos.NEXT, align="C")
         self.set_font("DejaVu", "", 11)
-        self.cell(0, 10, datetime.now().strftime("Generated on %B %d, %Y"), ln=True, align="C")
+        self.cell(0, 10, datetime.now().strftime("Generated on %B %d, %Y"), new_x=XPos.LMARGIN, new_y=YPos.NEXT, align="C")
         self.ln(5)
         self.set_draw_color(180, 180, 180)
         self.line(10, self.get_y(), 200, self.get_y())
@@ -47,7 +48,7 @@ def call_together(prompt, max_tokens=300):
         print("❌ Together.ai error:", str(e))
         return "[Error generating content]"
 
-def generate_dynamic_pdf(topic, recipient_email=None):
+def generate_dynamic_pdf(topic, tone="", style="", audience="", recipient_email=None):
     print(f"📝 Starting PDF generation for topic: {topic}")
 
     if not os.getenv("TOGETHER_API_KEY"):
@@ -73,35 +74,46 @@ def generate_dynamic_pdf(topic, recipient_email=None):
         pdf.add_font("DejaVu", "B", FONT_BOLD)
         pdf.set_auto_page_break(auto=True, margin=15)
         pdf.add_page()
+
+        # 🔹 Quick Summary
+        pdf.set_font("DejaVu", "B", 14)
+        pdf.cell(0, 10, "📌 Quick Summary", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
         pdf.set_font("DejaVu", "", 12)
+        pdf.multi_cell(0, 8,
+            f"Topic: {topic}\n"
+            f"Audience: {audience}\n"
+            f"Tone: {tone}\n"
+            f"Style: {style}"
+        )
+        pdf.ln(8)
 
         pdf.set_font("DejaVu", "B", 14)
-        pdf.cell(0, 10, "📄 Blog Post", ln=True)
+        pdf.cell(0, 10, "📄 Blog Post", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
         pdf.set_font("DejaVu", "", 12)
         pdf.multi_cell(0, 8, blog_post)
         pdf.ln(5)
 
         pdf.set_font("DejaVu", "B", 14)
-        pdf.cell(0, 10, "💬 Social Media Captions", ln=True)
+        pdf.cell(0, 10, "💬 Social Media Captions", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
         pdf.set_font("DejaVu", "", 12)
         pdf.multi_cell(0, 8, captions)
         pdf.ln(5)
 
         pdf.set_font("DejaVu", "B", 14)
-        pdf.cell(0, 10, "🎁 Lead Magnet Idea", ln=True)
+        pdf.cell(0, 10, "🎁 Lead Magnet Idea", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
         pdf.set_font("DejaVu", "", 12)
         pdf.multi_cell(0, 8, lead_magnet)
         pdf.ln(5)
 
         pdf.set_font("DejaVu", "B", 14)
-        pdf.cell(0, 10, "🔍 SEO Keywords", ln=True)
+        pdf.cell(0, 10, "🔍 SEO Keywords", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
         pdf.set_font("DejaVu", "", 12)
         pdf.multi_cell(0, 8, keywords)
         pdf.ln(10)
 
         pdf.set_text_color(0, 102, 204)
         pdf.set_font("DejaVu", "", 11)
-        pdf.cell(0, 10, "Create your own content pack at: ResumePilot.ai", ln=True, link="https://resumepilot.ai")
+        pdf.cell(0, 10, "Create your own content pack at: ResumePilot.ai", new_x=XPos.LMARGIN, new_y=YPos.NEXT, link="https://resumepilot.ai")
 
         filename = f"./content_pack_{uuid.uuid4().hex}.pdf"
         with open(filename, "wb") as f:
@@ -121,5 +133,5 @@ def generate_dynamic_pdf(topic, recipient_email=None):
 if __name__ == "__main__":
     topic = sys.argv[1] if len(sys.argv) > 1 else "email marketing for realtors"
     email = sys.argv[2] if len(sys.argv) > 2 else None
-    result = generate_dynamic_pdf(topic, email)
+    result = generate_dynamic_pdf(topic, recipient_email=email)
     print("✅ Done! PDF saved at:", result)
