@@ -15,4 +15,4 @@ RUN find . -type d -name "__pycache__" -exec rm -r {} + \
     && find . -name "*.pyc" -delete
 
 # Start the app
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8001"]
+CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port=${PORT:-8001}"]
