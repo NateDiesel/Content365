@@ -1,3 +1,7 @@
+import sys
+
+port = int(os.environ.get("PORT", 8001))
+
 from fastapi import FastAPI, BackgroundTasks
 from fastapi.responses import HTMLResponse, FileResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
@@ -8,8 +12,8 @@ import uuid
 import re
 import csv
 from datetime import datetime
-
 from utils.pdf_generator import generate_dynamic_pdf
+
 
 load_dotenv()
 
