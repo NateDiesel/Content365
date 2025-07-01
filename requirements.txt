@@ -4,8 +4,9 @@ stripe
 fpdf
 python-dotenv
 requests
-openai>=1.0.0,<2.0.0
 python-dotenv
 sendgrid
 together
 fpdf
+jinja2
+reportlab
