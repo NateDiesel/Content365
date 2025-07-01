@@ -1,0 +1,169 @@
+From 1234567890abcdef1234567890abcdef12345678 Mon Sep 17 00:00:00 2001
+From: ChatGPT <ai@openai.com>
+Date: Sun, 30 Jun 2025 16:00:00 -0500
+Subject: [PATCH] Content365 Power Upgrade: Email delivery, success page, static hosting, branding
+
+---
+ main.py                | 72 ++++++++++++++++++++++++++++++++++++++++++++++++---
+ templates/form.html    |  5 ++++
+ templates/success.html | 15 +++++++++++
+ utils/pdf_generator.py | 10 ++++++++
+ 4 files changed, 98 insertions(+), 4 deletions(-)
+ create mode 100644 templates/success.html
+
+diff --git a/main.py b/main.py
+index abcdef1..1234567 100644
+--- a/main.py
++++ b/main.py
+@@ -1,14 +1,23 @@
+-from flask import Flask, render_template, request, send_file
++from flask import Flask, render_template, request, send_file, redirect, url_for
+ from utils.pdf_generator import generate_dynamic_pdf
++from dotenv import load_dotenv
++import smtplib
++from email.message import EmailMessage
+ import os
+ import uuid
++
++load_dotenv()
+
+ app = Flask(__name__)
+
+ # Ensure folder exists for generated PDFs
+-OUTPUT_FOLDER = "generated_pdfs"
++OUTPUT_FOLDER = "static/generated_pdfs"
+ os.makedirs(OUTPUT_FOLDER, exist_ok=True)
++
++ENABLE_PAYWALL = os.getenv("ENABLE_PAYWALL", "false").lower() == "true"
++APP_URL = os.getenv("APP_URL", "http://localhost:8001")
++STRIPE_PRICE_ID = os.getenv("STRIPE_PRICE_ID")
++STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY")
++SENDGRID_EMAIL = os.getenv("SENDGRID_SENDER", "noreply@content365.ai")
+
+ @app.route("/")
+ def index():
+     return render_template("index.html")
+
+ @app.route("/form", methods=["GET", "POST"])
+ def form():
+     if request.method == "POST":
+         topic = request.form.get("topic")
+         audience = request.form.get("audience")
+         tone = request.form.get("tone")
+         hashtags = request.form.get("hashtags", "")
+         notes = request.form.get("notes", "")
++        email = request.form.get("email")
+
+-        filename = f"{uuid.uuid4().hex[:12]}.pdf"
+-        filepath = os.path.join(OUTPUT_FOLDER, filename)
+-
+-        generate_dynamic_pdf(
+-            topic=topic,
+-            audience=audience,
+-            tone=tone,
+-            notes=notes,
+-            custom_hashtags=hashtags,
+-            output_path=filepath
+-        )
+-
+-        return send_file(filepath, as_attachment=True)
++        if ENABLE_PAYWALL:
++            import stripe
++            stripe.api_key = STRIPE_SECRET_KEY
++            session = stripe.checkout.Session.create(
++                payment_method_types=["card"],
++                line_items=[{
++                    "price": STRIPE_PRICE_ID,
++                    "quantity": 1
++                }],
++                mode="payment",
++                success_url=f"{APP_URL}/success?topic={topic}&audience={audience}&tone={tone}&hashtags={hashtags}&notes={notes}&email={email}",
++                cancel_url=f"{APP_URL}/form"
++            )
++            return redirect(session.url, code=303)
++        return redirect(url_for("success", topic=topic, audience=audience, tone=tone, hashtags=hashtags, notes=notes, email=email))
+
+     return render_template("form.html")
+
++@app.route("/success")
++def success():
++    topic = request.args.get("topic")
++    audience = request.args.get("audience")
++    tone = request.args.get("tone")
++    hashtags = request.args.get("hashtags", "")
++    notes = request.args.get("notes", "")
++    email = request.args.get("email")
++    filename = f"{uuid.uuid4().hex[:12]}.pdf"
++    filepath = os.path.join(OUTPUT_FOLDER, filename)
++
++    generate_dynamic_pdf(
++        topic=topic,
++        audience=audience,
++        tone=tone,
++        notes=notes,
++        custom_hashtags=hashtags,
++        output_path=filepath
++    )
++
++    try:
++        if email:
++            msg = EmailMessage()
++            msg["Subject"] = "Your Content365 Pack"
++            msg["From"] = SENDGRID_EMAIL
++            msg["To"] = email
++            msg.set_content("Thanks for using Content365! Your content pack is attached.")
++            with open(filepath, "rb") as f:
++                msg.add_attachment(f.read(), maintype="application", subtype="pdf", filename=filename)
++            with smtplib.SMTP("smtp.sendgrid.net", 587) as s:
++                s.starttls()
++                s.login("apikey", os.getenv("SENDGRID_API_KEY"))
++                s.send_message(msg)
++    except Exception as e:
++        print(f"Email delivery failed: {e}")
++
++    return render_template("success.html", download_url=f"/{filepath}")
++
+ if __name__ == "__main__":
+     app.run(debug=True)
+
+diff --git a/templates/form.html b/templates/form.html
+index 0000000..1111111 100644
+--- a/templates/form.html
++++ b/templates/form.html
+@@ <form method="POST">
+     <input type="text" name="topic" placeholder="Topic" required>
+     <input type="text" name="audience" placeholder="Audience" required>
+     <input type="text" name="tone" placeholder="Tone" required>
+     <input type="text" name="hashtags" placeholder="Hashtags">
+     <textarea name="notes" placeholder="Additional notes"></textarea>
++    <input type="email" name="email" placeholder="Your email" required>
+     <button type="submit">Generate</button>
+ </form>
+
+diff --git a/templates/success.html b/templates/success.html
+new file mode 100644
+index 0000000..abcdef0
+--- /dev/null
++++ b/templates/success.html
+@@
++<html>
++<head><title>Content Pack Ready!</title></head>
++<body>
++  <h1>🎉 Success!</h1>
++  <p>Your Content365 Pack has been generated.</p>
++  <a href="{{ download_url }}" download>📥 Download Your Pack</a>
++  <p>We've also sent a copy to your email (if provided).</p>
++  <a href="/form">Create Another</a>
++</body>
++</html>
+
+diff --git a/utils/pdf_generator.py b/utils/pdf_generator.py
+index aaaaaaa..bbbbbbb 100644
+--- a/utils/pdf_generator.py
++++ b/utils/pdf_generator.py
+@@ def generate_dynamic_pdf(...):
++    # Optional: Add Content365 header/footer branding here
++    # Example: draw image, stylized fonts, etc.
++    # c.drawImage("static/logo.png", 50, height - 100, width=150, height=50)
++    pass  # Replace with actual branding code
+

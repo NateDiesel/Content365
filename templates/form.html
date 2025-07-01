@@ -1,98 +1,196 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Content365 – Create Your Pack</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Content365 Marketing Pack Generator</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet" />
   <style>
     body {
-      font-family: 'Inter', sans-serif;
+      font-family: 'Poppins', sans-serif;
+      background-color: #f8f9fc;
       margin: 0;
-      padding: 2rem;
-      background: #f9fafb;
-      color: #1f2937;
+      padding: 20px;
     }
+
+    .container {
+      max-width: 640px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 14px;
+      padding: 30px;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+    }
+
     h1 {
-      color: #1e3a8a;
+      font-size: 26px;
       text-align: center;
+      margin-bottom: 25px;
     }
-    .coach-section {
-      background: #e0f2fe;
-      padding: 1.5rem;
-      border-radius: 12px;
-      margin-bottom: 2rem;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+
+    .section-header {
+      font-size: 18px;
+      margin: 24px 0 10px;
+      color: #333;
+      font-weight: 600;
+      border-bottom: 1px solid #e0e0e0;
+      padding-bottom: 4px;
     }
-    .coach-section label {
+
+    label {
       display: block;
-      font-weight: 600;
-      margin-top: 1rem;
+      margin-top: 15px;
+      font-weight: 500;
+      font-size: 14px;
     }
-    .coach-section input, .coach-section textarea, .coach-section select {
+
+    input, textarea {
       width: 100%;
-      padding: 0.75rem;
-      border: 1px solid #cbd5e1;
+      padding: 12px;
+      border: 1px solid #ccc;
       border-radius: 8px;
-      margin-top: 0.25rem;
+      margin-top: 6px;
+      font-size: 14px;
+      transition: border 0.2s;
     }
-    .form-footer {
-      text-align: center;
-      margin-top: 2rem;
+
+    input:focus, textarea:focus {
+      border-color: #5577ff;
+      outline: none;
     }
-    .submit-btn {
-      padding: 0.8rem 1.5rem;
-      background-color: #3b82f6;
-      color: white;
-      font-weight: 600;
-      border: none;
-      border-radius: 8px;
+
+    .tip {
+      font-size: 12px;
+      color: #888;
+      margin-top: 4px;
+    }
+
+    .tone-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    .tone-option {
+      background-color: #eef1ff;
+      color: #333;
+      border: 1px solid #ccc;
+      border-radius: 20px;
+      padding: 8px 16px;
+      font-size: 14px;
       cursor: pointer;
+      user-select: none;
+      transition: background 0.2s;
     }
-    .submit-btn:hover {
-      background-color: #2563eb;
+
+    .tone-option.selected {
+      background-color: #4f46e5;
+      color: white;
+      border-color: #4f46e5;
+    }
+
+    button {
+      display: inline-block;
+      width: 100%;
+      background: #4f46e5;
+      color: white;
+      font-size: 16px;
+      padding: 14px;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      margin-top: 30px;
+      transition: background 0.2s;
+    }
+
+    button:disabled {
+      background: #999;
+      cursor: not-allowed;
+    }
+
+    .footer {
+      text-align: center;
+      margin-top: 30px;
+      font-size: 12px;
+      color: #888;
+    }
+
+    .spinner {
+      display: none;
+      margin-top: 16px;
+      text-align: center;
+      font-size: 14px;
+      color: #666;
     }
   </style>
 </head>
 <body>
+  <div class="container">
+    <h1>🚀 Content365 Marketing Pack Generator</h1>
+    <form method="POST" action="/form" onsubmit="return handleSubmit()">
+      <div class="section-header">🧠 Brand Basics</div>
 
-<h1>🧠 Your Marketing Coach – Content365</h1>
+      <label for="topic">💡 Topic</label>
+      <input type="text" name="topic" id="topic" required />
+      <div class="tip">What are you marketing? (e.g., eco water bottle)</div>
 
-<form method="POST">
-  <div class="coach-section">
-    <p><strong>👋 Welcome!</strong> Let's create your high-converting content pack.</p>
+      <label for="audience">🧍 Audience</label>
+      <input type="text" name="audience" id="audience" />
+      <div class="tip">Optional — Who is this for?</div>
 
-    <label for="topic">What’s your main topic or niche?</label>
-    <input type="text" name="topic" required placeholder="e.g. AI tools for marketers">
+      <label for="tone">🎨 Tone</label>
+      <input type="hidden" name="tone" id="tone" required />
+      <div class="tone-group">
+        <div class="tone-option" onclick="selectTone(this, 'Professional')">Professional</div>
+        <div class="tone-option" onclick="selectTone(this, 'Witty')">Witty</div>
+        <div class="tone-option" onclick="selectTone(this, 'Bold')">Bold</div>
+        <div class="tone-option" onclick="selectTone(this, 'Empathetic')">Empathetic</div>
+        <div class="tone-option" onclick="selectTone(this, 'Playful')">Playful</div>
+        <div class="tone-option" onclick="selectTone(this, 'Persuasive')">Persuasive</div>
+      </div>
+      <div class="tip">Choose the tone of your content</div>
 
-    <label for="audience">Who’s your target audience?</label>
-    <input type="text" name="audience" required placeholder="e.g. solo founders, B2B SaaS teams">
+      <div class="section-header">📢 Social Customization</div>
 
-    <label for="tone">What tone do you want?</label>
-    <select name="tone" required>
-      <option value="Professional">Professional</option>
-      <option value="Casual">Casual</option>
-      <option value="Witty">Witty</option>
-      <option value="Persuasive">Persuasive</option>
-    </select>
+      <label for="hashtags">🔖 Custom Hashtags</label>
+      <input type="text" name="hashtags" id="hashtags" />
+      <div class="tip">Optional — Comma-separated if you want to include your own</div>
 
-    <label for="platform">Which social platform are you focusing on?</label>
-    <select name="platform" required>
-      <option value="LinkedIn">LinkedIn</option>
-      <option value="Instagram">Instagram</option>
-      <option value="Twitter">Twitter</option>
-      <option value="TikTok">TikTok</option>
-      <option value="General">General Use</option>
-    </select>
+      <label for="notes">📝 Extra Notes</label>
+      <textarea name="notes" id="notes" rows="4"></textarea>
+      <div class="tip">Optional — Goals, angles, context, etc.</div>
 
-    <label for="notes">Any extra notes or goals?</label>
-    <textarea name="notes" rows="4" placeholder="e.g. I want it to include a call to action for my free webinar"></textarea>
+      <label for="email">📧 Your Email</label>
+      <input type="email" name="email" id="email" required />
+      <div class="tip">We’ll send your content pack to this address</div>
+
+      <button id="submitButton" type="submit">🎯 Generate My Pack</button>
+      <div id="spinner" class="spinner">✨ Generating your Content Pack…</div>
+    </form>
+
+    <div class="footer">
+      Made with 💡 by Content365
+    </div>
   </div>
 
-  <div class="form-footer">
-    <button class="submit-btn" type="submit">Generate My Content Pack 🚀</button>
-  </div>
-</form>
+  <script>
+    function selectTone(element, value) {
+      document.getElementById("tone").value = value;
+      document.querySelectorAll(".tone-option").forEach(opt => opt.classList.remove("selected"));
+      element.classList.add("selected");
+    }
 
+    function handleSubmit() {
+      const tone = document.getElementById("tone").value;
+      if (!tone) {
+        alert("Please select a tone before submitting.");
+        return false;
+      }
+      document.getElementById("spinner").style.display = "block";
+      document.getElementById("submitButton").disabled = true;
+      return true;
+    }
+  </script>
 </body>
 </html>

@@ -1,0 +1,32 @@
+From 78e62ffcb16a1ab2f99f298f0d1dc0b9a3c0e9e8 Mon Sep 17 00:00:00 2001
+From: ChatGPT <ai@openai.com>
+Date: Sun, 30 Jun 2025 14:00:00 -0500
+Subject: [PATCH] Add Stripe Checkout logic to Flask index route
+
+---
+ main.py | 17 +++++++++++++++++
+ 1 file changed, 17 insertions(+)
+
+diff --git a/main.py b/main.py
+index 1111111..2222222 100644
+--- a/main.py
++++ b/main.py
+@@ def index():
+     if request.method == "POST":
+         topic = request.form.get("topic")
+         tone = request.form.get("tone")
+         audience = request.form.get("audience")
+         email = request.form.get("email")
+
++        if ENABLE_PAYWALL:
++            session = stripe.checkout.Session.create(
++                payment_method_types=["card"],
++                line_items=[{
++                    "price": os.getenv("STRIPE_PRICE_ID"),
++                    "quantity": 1
++                }],
++                mode="payment",
++                success_url=APP_URL + "/success",
++                cancel_url=APP_URL + "/"
++            )
++            return redirect(session.url, code=303)

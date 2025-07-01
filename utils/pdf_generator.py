@@ -16,11 +16,10 @@ FONT_BOLD = "fonts/DejaVuSans-Bold.ttf"
 class PDF(FPDF):
     def header(self):
         if os.path.exists(LOGO_PATH):
-            # Future logo support
-            # self.image(LOGO_PATH, x=10, y=8, w=30)
-            self.ln(25)
+            self.image(LOGO_PATH, x=10, y=8, w=30)
+            self.ln(20)
         self.set_font("DejaVu", "B", 18)
-        self.cell(0, 12, "Content365: AI Marketing Pack", new_x=XPos.LMARGIN, new_y=YPos.NEXT, align="C")
+        self.cell(0, 12, "Content365 Marketing Pack", new_x=XPos.LMARGIN, new_y=YPos.NEXT, align="C")
         self.set_font("DejaVu", "", 11)
         self.cell(0, 10, datetime.now().strftime("Generated on %B %d, %Y"), new_x=XPos.LMARGIN, new_y=YPos.NEXT, align="C")
         self.ln(5)
@@ -42,22 +41,43 @@ def call_together(prompt, max_tokens=300):
         print("❌ Together.ai error:", e)
         return "[Error generating content]"
 
-def generate_content_pack(topic, audience, tone, platform, notes, output_path):
+def generate_dynamic_pdf(topic, tone="", audience="", notes="", custom_hashtags="", output_path="generated_pdfs/output.pdf"):
     print(f"🧠 Generating Content365 pack for topic: {topic}")
 
-    blog_prompt = f"Write a 300-word {tone.lower()} marketing article about {topic}."
+    if not os.getenv("TOGETHER_API_KEY"):
+        print("❌ TOGETHER_API_KEY is missing.")
+        return None
+
+    if not os.path.exists(FONT_REGULAR) or not os.path.exists(FONT_BOLD):
+        print("❌ Font files not found.")
+        return None
+
+    # Prompts
+    blog_prompt = f"Write a 500-word {tone.lower()} marketing article about {topic}." if tone else f"Write a 500-word blog post about {topic}."
     blog_post = call_together(blog_prompt)
 
-    platform_str = platform or "general social media"
     caption_prompt = f"""
-    Write 3 engaging, platform-optimized social media captions about "{topic}" in a {tone.lower()} tone.
-    Tailor each caption for {platform_str}. Include relevant hashtags and emojis if appropriate.
-    """
+    Generate optimized social media content for "{topic}" in a {tone.lower()} tone.
+    Write 1 caption each for:
+    - Instagram
+    - LinkedIn
+    - TikTok
+    - Twitter/X
+    - Facebook
+    Include platform-specific hashtags and formatting.
+    """.strip()
     captions = call_together(caption_prompt)
 
-    lead_magnet = call_together(f"Suggest a lead magnet idea for {topic}.")
+    lead_magnet = call_together(f"Suggest a compelling lead magnet idea for {topic}.")
     keywords = call_together(f"List 5 SEO keywords for {topic}, comma separated.")
 
+    # Combine hashtags
+    if custom_hashtags.strip():
+        hashtags_block = f"\n\n🧷 User-requested hashtags:\n{custom_hashtags}"
+    else:
+        hashtags_block = ""
+
+    # PDF assembly
     try:
         pdf = PDF()
         pdf.add_font("DejaVu", "", FONT_REGULAR)
@@ -65,25 +85,16 @@ def generate_content_pack(topic, audience, tone, platform, notes, output_path):
         pdf.set_auto_page_break(auto=True, margin=15)
         pdf.add_page()
 
-        # 🔷 Summary Section
         pdf.set_font("DejaVu", "B", 14)
         pdf.cell(0, 10, "📌 Summary", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
         pdf.set_font("DejaVu", "", 12)
-        pdf.multi_cell(0, 8, f"Topic: {topic}\nAudience: {audience}\nTone: {tone}\nPlatform: {platform}")
-        if notes:
-            pdf.ln(4)
-            pdf.set_font("DejaVu", "B", 12)
-            pdf.cell(0, 10, "📝 Notes:", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
-            pdf.set_font("DejaVu", "", 12)
-            pdf.multi_cell(0, 8, notes)
-
+        pdf.multi_cell(0, 8, f"Topic: {topic}\nAudience: {audience}\nTone: {tone}\nNotes: {notes}")
         pdf.ln(8)
 
-        # 🔷 Content Sections
         content_blocks = [
-            ("📄 Blog Post", blog_post),
-            ("💬 Social Media Captions", captions),
-            ("🎁 Lead Magnet Idea", lead_magnet),
+            ("📄 Long-form Blog Article", blog_post),
+            ("💬 Social Media Captions (All Platforms)", captions + hashtags_block),
+            ("🎁 Lead Magnet Ideas", lead_magnet),
             ("🔍 SEO Keywords", keywords),
         ]
 
@@ -94,11 +105,12 @@ def generate_content_pack(topic, audience, tone, platform, notes, output_path):
             pdf.multi_cell(0, 8, content)
             pdf.ln(6)
 
+        os.makedirs(os.path.dirname(output_path), exist_ok=True)
         pdf.output(output_path)
         print(f"✅ Content365 PDF saved: {output_path}")
         return output_path
 
     except Exception as e:
-        print("❌ Error generating PDF:", e)
+        print("❌ PDF generation error:", e)
         traceback.print_exc()
         return None

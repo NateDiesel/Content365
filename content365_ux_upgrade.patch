@@ -1,0 +1,127 @@
+
+diff --git a/templates/form.html b/templates/form.html
+index e69de29..d8f4c30 100644
+--- a/templates/form.html
++++ b/templates/form.html
+@@ -0,0 +1,93 @@
++<!DOCTYPE html>
++<html lang="en">
++<head>
++    <meta charset="UTF-8">
++    <meta name="viewport" content="width=device-width, initial-scale=1.0">
++    <title>Content365 Generator</title>
++    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
++    <style>
++        body {
++            font-family: 'Inter', sans-serif;
++            background-color: #f7f9fc;
++            margin: 0;
++            padding: 0;
++            display: flex;
++            justify-content: center;
++            align-items: flex-start;
++            min-height: 100vh;
++        }
++        .form-container {
++            background: white;
++            padding: 2rem;
++            margin-top: 3rem;
++            border-radius: 12px;
++            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
++            width: 100%;
++            max-width: 600px;
++        }
++        h1 {
++            font-size: 1.8rem;
++            margin-bottom: 1rem;
++            text-align: center;
++        }
++        label {
++            display: block;
++            margin-top: 1rem;
++            font-weight: 600;
++        }
++        input, textarea {
++            width: 100%;
++            padding: 0.7rem;
++            border-radius: 8px;
++            border: 1px solid #ccc;
++            margin-top: 0.3rem;
++            font-size: 1rem;
++        }
++        .tone-options {
++            display: flex;
++            gap: 0.5rem;
++            margin-top: 0.5rem;
++            flex-wrap: wrap;
++        }
++        .tone-option {
++            padding: 0.5rem 1rem;
++            border: 1px solid #ccc;
++            border-radius: 8px;
++            cursor: pointer;
++            background-color: #f0f0f0;
++        }
++        .tone-option.active {
++            background-color: #4f46e5;
++            color: white;
++            border-color: #4f46e5;
++        }
++        button {
++            margin-top: 2rem;
++            background-color: #4f46e5;
++            color: white;
++            border: none;
++            padding: 0.8rem 1.5rem;
++            font-size: 1rem;
++            border-radius: 8px;
++            cursor: pointer;
++            width: 100%;
++        }
++        .subtext {
++            font-size: 0.85rem;
++            color: #666;
++        }
++    </style>
++</head>
++<body>
++<div class="form-container">
++    <h1>🚀 Content365 Marketing Pack Generator</h1>
++    <form method="post">
++        <label>💡 Topic
++            <input type="text" name="topic" placeholder="What are you marketing?" required>
++        </label>
++        <label>🧍 Audience
++            <input type="text" name="audience" placeholder="Optional — Who is this for?">
++        </label>
++        <label>🎯 Tone</label>
++        <div class="tone-options" id="tone-options">
++            <div class="tone-option" data-tone="Professional">Professional</div>
++            <div class="tone-option" data-tone="Witty">Witty</div>
++            <div class="tone-option" data-tone="Bold">Bold</div>
++            <div class="tone-option" data-tone="Casual">Casual</div>
++            <div class="tone-option" data-tone="Inspirational">Inspirational</div>
++        </div>
++        <input type="hidden" name="tone" id="tone-input">
++        <label>🏷 Custom Hashtags
++            <input type="text" name="hashtags" placeholder="Optional — Comma-separated hashtags">
++        </label>
++        <label>📝 Extra Notes
++            <textarea name="notes" rows="4" placeholder="Optional — Goals, angles, context, etc."></textarea>
++        </label>
++        <button type="submit">🎯 Generate My Pack</button>
++    </form>
++</div>
++<script>
++    const toneOptions = document.querySelectorAll('.tone-option');
++    const toneInput = document.getElementById('tone-input');
++    toneOptions.forEach(option => {
++        option.addEventListener('click', () => {
++            toneOptions.forEach(o => o.classList.remove('active'));
++            option.classList.add('active');
++            toneInput.value = option.dataset.tone;
++        });
++    });
++</script>
++</body>
++</html>
