@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+stripe
+python-dotenv
+requests
+sendgrid
+jinja2
+reportlab>=4.0.0
+httpx
+python-multipart
