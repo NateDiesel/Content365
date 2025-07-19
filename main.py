@@ -3,7 +3,7 @@ from fastapi.responses import HTMLResponse, FileResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from dotenv import load_dotenv
-from utils.pdf_generator import generate_dynamic_pdf
+from utils.pdf_generator import generate_pdf
 from utils.openrouter import call_openrouter
 import stripe
 import uuid
@@ -148,7 +148,7 @@ async def generate_pdf_response(topic, audience, tone, hashtags, notes, ai_resul
 
     filename = f"{uuid.uuid4().hex[:12]}.pdf"
     filepath = os.path.join(OUTPUT_FOLDER, filename)
-    generate_dynamic_pdf(content=content, output_path=filepath)
+    generate_pdf(content_blocks={"blog": content}, output_path=filepath)
 
     return FileResponse(filepath, media_type="application/pdf", filename=filename)
 
