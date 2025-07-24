@@ -1,0 +1,51 @@
+
+body {
+  margin: 0;
+  font-family: 'Inter', sans-serif;
+  background: #f9fafb;
+  color: #1f2937;
+}
+.container {
+  max-width: 800px;
+  margin: 2rem auto;
+  padding: 1.5rem;
+}
+h1, h2, h3 {
+  margin-bottom: 1rem;
+}
+label {
+  display: block;
+  margin-top: 1.25rem;
+  font-weight: 600;
+}
+input, select, textarea {
+  width: 100%;
+  padding: 0.5rem;
+  margin-top: 0.25rem;
+  border-radius: 6px;
+  border: 1px solid #cbd5e0;
+  font-size: 1rem;
+}
+button {
+  background-color: #1e40af;
+  color: white;
+  padding: 0.75rem 1.25rem;
+  font-weight: 600;
+  font-size: 1rem;
+  border: none;
+  border-radius: 8px;
+  margin-top: 1.5rem;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+button:hover {
+  background-color: #3749c2;
+}
+ul {
+  padding-left: 1.25rem;
+}
+img.logo {
+  max-height: 72px;
+  margin: 0 auto 1rem;
+  display: block;
+}

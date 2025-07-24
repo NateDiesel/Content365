@@ -1,0 +1,7 @@
+Write a {word_count}-length blog post on the topic: '{topic}' for an audience of '{audience}' in a '{tone}' tone.
+Generate social media captions tailored for the following platforms: {platforms}.
+Each caption should:
+- Match the tone and audience type
+- Include emojis and a compelling call to action
+- End with 5-7 smart, topic-relevant hashtags per platform
+Return results grouped by platform in markdown format.

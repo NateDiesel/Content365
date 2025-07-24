@@ -1,0 +1,118 @@
+<!-- templates/index.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Content365 – Your AI Marketing Coach</title>
+  <meta name="description" content="Generate high-converting marketing content in seconds with Content365 – your AI-powered content assistant."/>
+  <link rel="icon" href="/static/favicon.ico">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Inter', sans-serif;
+      background: #f9fafb;
+      color: #1f2937;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+    header {
+      background-color: #1e40af;
+      color: white;
+      padding: 2rem 1rem;
+      text-align: center;
+    }
+    header img {
+      width: 100px;
+      margin-bottom: 0.5rem;
+    }
+    main {
+      flex: 1;
+      padding: 2rem 1rem;
+      max-width: 800px;
+      margin: auto;
+    }
+    .features {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+      margin-top: 2rem;
+    }
+    .features div {
+      background: #eef2ff;
+      padding: 1rem;
+      border-radius: 8px;
+      flex: 1 1 45%;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .testimonials {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 1rem;
+      margin-top: 3rem;
+    }
+    .testimonials blockquote {
+      background: white;
+      padding: 1rem;
+      border-radius: 8px;
+      box-shadow: 0 0 4px rgba(0,0,0,0.05);
+      font-style: italic;
+    }
+    footer {
+      text-align: center;
+      font-size: 0.875rem;
+      color: #6b7280;
+      padding: 1rem;
+      margin-top: 3rem;
+    }
+    a.button {
+      display: inline-block;
+      background: #3b82f6;
+      color: white;
+      padding: 0.75rem 1.5rem;
+      border-radius: 8px;
+      font-weight: 600;
+      text-decoration: none;
+      margin: 1rem 0;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <img src="/static/logo.png" alt="Content365 Logo" />
+    <h1>Content365</h1>
+    <p>Your AI co-pilot for 365 days of marketing magic.</p>
+  </header>
+
+  <main>
+    <h2>Ready to generate content that connects?</h2>
+    <p>Our AI Marketing Coach helps you craft blog posts, social captions, lead magnets, and more — all tailored to your niche and business goals.</p>
+    <a href="/form" class="button">Start Creating for Free</a>
+
+    <div class="features">
+      <div>✅ <strong>Blog Post:</strong> AI-written, tailored to your niche</div>
+      <div>✅ <strong>Captions:</strong> Instagram, TikTok, LinkedIn-ready</div>
+      <div>✅ <strong>SEO Pack:</strong> Lead magnet + keyword suggestions</div>
+      <div>✅ <strong>PDF:</strong> Branded, emoji-rich, downloadable</div>
+      <div>✅ <strong>Monetization:</strong> Email delivery & Stripe paywall</div>
+    </div>
+
+    <a href="/sample" class="button" style="background:#eef2ff; color:#1f2937;">📄 Preview Sample PDF</a>
+
+    <div class="testimonials">
+      <blockquote>“Generated 3 months of content in 3 minutes.”<br><strong>– Jane D., Content Strategist</strong></blockquote>
+      <blockquote>“Cleaner than the $500 packs our agency delivers — in seconds.”<br><strong>– Freelance Marketer</strong></blockquote>
+      <blockquote>“Like having an AI copywriter in my pocket.”<br><strong>– Newsletter Creator</strong></blockquote>
+    </div>
+  </main>
+
+  <footer>
+    © 2025 <strong>Content365.xyz</strong> — Built with ❄️ and ❤️<br>
+    <a href="mailto:contact@content365.xyz">contact@content365.xyz</a>
+  </footer>
+</body>
+</html>

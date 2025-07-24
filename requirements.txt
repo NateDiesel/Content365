@@ -1,0 +1,12 @@
+fastapi>=0.95.0,<1.0.0
+uvicorn[standard]>=0.22.0
+jinja2>=3.0.0
+python-multipart>=0.0.9
+openrouter
+requests
+pydantic>=2.6.4
+python-dotenv>=0.21.0
+reportlab>=4.4.2
+pillow>=9.0.0
+stripe>=9.0.0
+httpx>=0.27.0

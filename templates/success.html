@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Your Pack is Ready - Content365</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet" />
+  <style>
+    body {
+      font-family: 'Poppins', sans-serif;
+      background-color: #f9fafc;
+      margin: 0;
+      padding: 40px 20px;
+    }
+
+    .container {
+      max-width: 600px;
+      margin: auto;
+      background: white;
+      border-radius: 16px;
+      padding: 40px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+      text-align: center;
+    }
+
+    h1 {
+      font-size: 26px;
+      margin-bottom: 20px;
+      color: #4f46e5;
+    }
+
+    p {
+      font-size: 16px;
+      color: #444;
+      margin-bottom: 20px;
+    }
+
+    a.button {
+      display: inline-block;
+      background: #4f46e5;
+      color: white;
+      font-size: 16px;
+      padding: 14px 26px;
+      border-radius: 10px;
+      text-decoration: none;
+      margin: 20px 0;
+      transition: background 0.2s;
+    }
+
+    a.button:hover {
+      background: #3730a3;
+    }
+
+    .footer {
+      font-size: 12px;
+      color: #aaa;
+      margin-top: 30px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🎉 Your Pack Is Ready!</h1>
+    <p>Your custom content marketing pack has been generated.</p>
+
+    <a href="{{ download_url }}" class="button" download>📥 Download Your PDF</a>
+
+    <p>A copy has also been emailed to you for safekeeping.</p>
+
+    <a href="/form" class="button" style="background:#e0e0e0; color:#333;">🔁 Make Another Pack</a>
+
+    <div class="footer">
+      Built with 💼 by Content365
+    </div>
+  </div>
+</body>
+</html>
