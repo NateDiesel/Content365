@@ -1,5 +1,5 @@
-import json
 # -*- coding: utf-8 -*-
+import json
 from fastapi import FastAPI, Request, Form, Query
 from typing import List
 from fastapi.responses import HTMLResponse, FileResponse, RedirectResponse
