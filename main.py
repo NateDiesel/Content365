@@ -160,7 +160,6 @@ async def success(
 
     return await generate_pdf_response(topic, audience, tone, hashtags, notes, ai_result, email)
 
-
 async def generate_pdf_response(topic, audience, tone, hashtags, notes, ai_result, email):
     try:
         social_captions = json.loads(ai_result)
@@ -175,13 +174,11 @@ async def generate_pdf_response(topic, audience, tone, hashtags, notes, ai_resul
         "tips": notes
     }
 
-
     filename = f"{uuid.uuid4().hex[:12]}.pdf"
     filepath = os.path.join(OUTPUT_FOLDER, filename)
     generate_pdf(content_dict=content_dict)
 
     return FileResponse(filepath, media_type="application/pdf", filename=filename)
-
 
 @app.get("/thank-you", response_class=HTMLResponse)
 async def thank_you(request: Request):
