@@ -18,17 +18,14 @@ load_dotenv()
 
 app = FastAPI()
 
-# Stripe and app config
 stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
 APP_URL = os.getenv("APP_URL", "http://localhost:8000")
 STRIPE_PRICE_ID = os.getenv("STRIPE_PRICE_ID")
 ENABLE_PAYWALL = os.getenv("ENABLE_PAYWALL", "false").lower() == "true"
 
-# Output folder
 OUTPUT_FOLDER = "generated_pdfs"
 os.makedirs(OUTPUT_FOLDER, exist_ok=True)
 
-# Templates + static
 templates = Jinja2Templates(directory="templates")
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
