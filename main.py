@@ -162,17 +162,19 @@ async def success(
 
 
 async def generate_pdf_response(topic, audience, tone, hashtags, notes, ai_result, email):
-    content_dict = {
-        "blog_post": ai_result,
-        "lead_magnet": f"Top tips for {audience or 'your niche'} success in 2025",
-        "seo_keywords": f"{topic.lower()}, {audience.lower()} marketing, AI content tools",
-                try:
+    try:
         social_captions = json.loads(ai_result)
     except json.JSONDecodeError:
-        social_captions = {"General": [ai_result]}  # fallback if invalid JSON
+        social_captions = {"General": [ai_result]}
+
+    content_dict = {
+        "lead_magnet": f"Top tips for {audience or 'your niche'} success in 2025",
+        "seo_keywords": f"{topic.lower()}, {audience.lower()} marketing, AI content tools",
+        "social_captions": social_captions,
         "hashtags": hashtags,
         "tips": notes
     }
+
 
     filename = f"{uuid.uuid4().hex[:12]}.pdf"
     filepath = os.path.join(OUTPUT_FOLDER, filename)
