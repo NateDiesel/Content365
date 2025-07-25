@@ -161,7 +161,8 @@ async def success(
 async def generate_pdf_response(topic, audience, tone, hashtags, notes, ai_result, email):
     try:
         social_captions = json.loads(ai_result)
-    except json.JSONDecodeError:
+    except Exception:
+        # fallback: put AI result inside a general key
         social_captions = {"General": [ai_result]}
 
     content_dict = {
