@@ -1,54 +1,36 @@
-<<<<<<< HEAD
-# Ignore virtual environments
-venv/
-.env
-.env.*
-
-# Byte-compiled / cache
-__pycache__/
-*.py[co]
-*.so
-
-# OS files
-.DS_Store
-Thumbs.db
-
-# PDF outputs
-generated_pdfs/
-
-# Ignore versioned subfolders
-=======
-# --- Python / venv ---
+# Ignore virtual envs & local env files
 .venv/
 venv/
-__pycache__/
-*.py[cod]
-*.so
-.pytest_cache/
-
-# --- Env files (keep the template tracked) ---
 .env
 .env.*
+.envrc
 
-# --- OS / IDE junk ---
+# Python cache/build
+__pycache__/
+*.py[cod]
+*.pyd
+*.egg-info/
+build/
+dist/
+.cache/
+
+# OS junk
 .DS_Store
 Thumbs.db
+
+# Editors/IDE
 .vscode/
 .idea/
 
-# --- Builds / archives / logs ---
-dist/
-build/
-*.zip
+# Generated outputs (keep fonts tracked!)
+generated/
+generated_pdfs/
+logs/
 *.log
 
-# --- App outputs ---
-generated_pdfs/*
-!generated_pdfs/.gitkeep
+# C extensions
+*.so
 
-# --- (If you create any Node bits later) ---
-node_modules/
+# Ignore old export
+Content365-v4.6-final/
 
-# --- Your versioned export folders (keep if you use these locally) ---
->>>>>>> 2ed0c2a (chore: wire Gemini provider + provider_router)
-Content365-v*
