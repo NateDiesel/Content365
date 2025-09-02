@@ -10,3 +10,7 @@ reportlab>=4.4.2
 pillow>=9.0.0
 stripe>=9.0.0
 httpx>=0.27.0
+<<<<<<< HEAD
+=======
+google-genai>=1.0.0
+>>>>>>> 2ed0c2a (chore: wire Gemini provider + provider_router)

@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 <!-- templates/index.html -->
 <!DOCTYPE html>
 <html lang="en">
@@ -113,6 +114,45 @@
   <footer>
     © 2025 <strong>Content365.xyz</strong> — Built with ❄️ and ❤️<br>
     <a href="mailto:contact@content365.xyz">contact@content365.xyz</a>
+=======
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <title>Content365 — {{ env('SITE_TAGLINE') if env else 'Instant AI-generated marketing packs' }}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <link rel="icon" href="/{{ 'static/favicon.ico' }}">
+  <link rel="stylesheet" href="/static/site.css">
+</head>
+<body class="page">
+  <header class="nav">
+    <div class="brand">
+      <img src="/static/logo.png" alt="Content365" class="logo"/>
+      <span class="brand-name">Content365</span>
+    </div>
+    <nav>
+      <a href="/form" class="btn btn-primary">Get Your Pack</a>
+      <a href="/sample" class="btn btn-ghost">See Sample PDF</a>
+    </nav>
+  </header>
+
+  <main class="hero">
+    <h1>Instant AI-Generated Marketing Packs</h1>
+    <p class="sub">Blog outline, platform-ready captions, smart hashtags — delivered as a polished PDF.</p>
+    <div class="cta">
+      <a href="/form" class="btn btn-primary btn-lg">Create My Pack</a>
+      <a href="/sample" class="btn btn-secondary btn-lg">Preview Sample</a>
+    </div>
+    <ul class="trust">
+      <li>✅ JSON-first → consistent quality</li>
+      <li>✅ Email delivery (PDF attached)</li>
+      <li>✅ Stripe-ready (flip on when you want)</li>
+    </ul>
+  </main>
+
+  <footer class="footer">
+    <span>© {{ now().year if now else 2025 }} Content365</span>
+>>>>>>> 2ed0c2a (chore: wire Gemini provider + provider_router)
   </footer>
 </body>
 </html>

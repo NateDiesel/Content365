@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Ignore virtual environments
 venv/
 .env
@@ -16,4 +17,38 @@ Thumbs.db
 generated_pdfs/
 
 # Ignore versioned subfolders
+=======
+# --- Python / venv ---
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.so
+.pytest_cache/
+
+# --- Env files (keep the template tracked) ---
+.env
+.env.*
+
+# --- OS / IDE junk ---
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# --- Builds / archives / logs ---
+dist/
+build/
+*.zip
+*.log
+
+# --- App outputs ---
+generated_pdfs/*
+!generated_pdfs/.gitkeep
+
+# --- (If you create any Node bits later) ---
+node_modules/
+
+# --- Your versioned export folders (keep if you use these locally) ---
+>>>>>>> 2ed0c2a (chore: wire Gemini provider + provider_router)
 Content365-v*
