@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 fastapi>=0.95.0,<1.0.0
 uvicorn[standard]>=0.22.0
 jinja2>=3.0.0
@@ -14,3 +15,17 @@ httpx>=0.27.0
 =======
 google-genai>=1.0.0
 >>>>>>> 2ed0c2a (chore: wire Gemini provider + provider_router)
+=======
+fastapi>=0.110,<1.0
+uvicorn[standard]>=0.22.0
+jinja2>=3.1
+python-multipart>=0.0.9
+requests>=2.31
+httpx>=0.27.0
+python-dotenv>=1.0
+pydantic>=2.6.4
+reportlab>=4.4.2
+pillow>=9.0.0
+stripe>=9.0.0
+google-genai>=1.0.0    # optional; only needed if you enable Gemini
+>>>>>>> 5a37524 (Initial commit of Content365 project)

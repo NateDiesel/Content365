@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # utils/gemini.py
 # -*- coding: utf-8 -*-
 """
@@ -183,3 +184,52 @@ def call_gemini_chat(
 
     text = _extract_text(data)
     return strip_code_fences(text)
+=======
+﻿# utils/gemini.py
+# -*- coding: utf-8 -*-
+import os, httpx
+
+API_URL_TMPL = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={key}"
+
+def _friendly_http_error(status: int, body_preview: str) -> str:
+    if status == 401:
+        return ("Gemini 401: Unauthorized. Check GOOGLE_API_KEY or restrictions. "
+                f"Server said: {body_preview}")
+    if status == 403:
+        return ("Gemini 403: Forbidden. Ensure the Generative Language API is enabled for this key "
+                "and the key isn't domain- or IP-restricted. "
+                f"Server said: {body_preview}")
+    if status == 429:
+        return ("Gemini 429: Rate limited / quota exceeded. Slow down or raise quota. "
+                f"Server said: {body_preview}")
+    return f"Gemini HTTP {status}: {body_preview}"
+
+async def generate_text(prompt: str) -> str:
+    key = os.getenv("GOOGLE_API_KEY")
+    model = os.getenv("GEMINI_MODEL", "gemini-1.5-flash-latest")
+    if not key:
+        raise RuntimeError("GOOGLE_API_KEY missing")
+
+    url = API_URL_TMPL.format(model=model, key=key)
+    body = {
+        "contents": [
+            {"parts": [{"text": prompt}]}
+        ]
+        # You can add safety settings here if needed
+        # "safetySettings": [...]
+    }
+    async with httpx.AsyncClient(timeout=60) as client:
+        r = await client.post(url, json=body)
+    if r.status_code != 200:
+        preview = r.text[:400].replace("\n", " ")
+        raise RuntimeError(_friendly_http_error(r.status_code, preview))
+
+    data = r.json()
+    try:
+        text = data["candidates"][0]["content"]["parts"][0]["text"].strip()
+        if not text:
+            raise RuntimeError("Gemini returned empty content")
+        return text
+    except Exception as e:
+        raise RuntimeError(f"Gemini parse error: {e}; body={r.text[:400]}")
+>>>>>>> 5a37524 (Initial commit of Content365 project)

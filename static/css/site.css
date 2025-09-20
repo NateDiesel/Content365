@@ -1,0 +1,22 @@
+﻿:root { --primary:#1f73ff; --text:#0f1222; --muted:#6b7280; --bg:#ffffff; }
+* { box-sizing:border-box; }
+html,body { margin:0; padding:0; background:var(--bg); color:var(--text);
+  font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif; }
+
+.container { max-width:960px; margin:0 auto; padding:24px; }
+.center { min-height:70vh; display:flex; flex-direction:column;
+  align-items:center; justify-content:center; text-align:center; }
+
+h1,h2,h3 { margin:0 0 12px; line-height:1.25; }
+p { margin:0 0 12px; }
+
+.btn { display:inline-block; padding:10px 16px; border-radius:10px;
+  background:var(--primary); color:#fff; text-decoration:none; border:0; cursor:pointer; }
+.btn:hover { filter:brightness(0.95); }
+.btn-primary { background:var(--primary); }
+
+input,select,textarea { width:100%; padding:10px 12px; border:1px solid #e5e7eb; border-radius:10px; outline:none; }
+label { display:block; margin:12px 0 6px; color:var(--muted); font-size:14px; }
+
+.form-row { display:grid; gap:12px; grid-template-columns:1fr 1fr; }
+@media (max-width:700px){ .form-row { grid-template-columns:1fr; } }
