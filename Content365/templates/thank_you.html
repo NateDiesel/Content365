@@ -1,0 +1,163 @@
+﻿<!DOCTYPE html>
+<<<<<<< HEAD 5a37524 (Initial commit of Content365 project)
+<html>
+<head>
+    <title>Thank You - Content365</title>
+</head>
+<body style="font-family: sans-serif; text-align: center; margin-top: 3rem;">
+    <h1>🎉 Thank You!</h1>
+    <p>Your content pack is being prepared and will be emailed shortly.</p>
+    <p>Want to help us grow? Share Content365:</p>
+    <div style="margin: 1.5rem;">
+        <a href="https://twitter.com/intent/tweet?text=Check+out+Content365!+Generate+AI+marketing+packs+in+seconds:+https://content365.xyz" target="_blank">🐦 Tweet</a> |
+        <a href="https://www.linkedin.com/sharing/share-offsite/?url=https://content365.xyz" target="_blank">🔗 Share on LinkedIn</a>
+    </div>
+    <a href="/" style="display: inline-block; margin-top: 2rem;">⬅️ Back to Home</a> 5a37524 (Initial commit of Content365 project)
+
+<!-- Optional analytics pixel -->
+<img src="https://content365.xyz/pixel.gif" width="1" height="1" alt="tracker"/>
+
+</body>
+</html>
+=======
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <title>Create Your Pack — Content365</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <link rel="icon" href="/static/favicon.ico">
+  <link rel="stylesheet" href="/static/site.css"> 5a37524 (Initial commit of Content365 project)
+</head>
+<body class="page">
+  <header class="nav">
+    <div class="brand">
+      <img src="/static/logo.png" alt="Content365" class="logo"/> 5a37524 (Initial commit of Content365 project)
+      <span class="brand-name">Content365</span>
+    </div>
+    <nav>
+      <a href="/" class="btn btn-ghost">Home</a>
+      <a href="/sample" class="btn btn-ghost">Sample PDF</a>
+    </nav>
+  </header>
+
+  <main class="container">
+    <h1>Create Your Marketing Pack</h1>
+    <form method="post" action="/form" class="card form">
+
+      <label>Topic*
+        <input required name="topic" placeholder="e.g., Personal finance for Gen Z">
+      </label>
+
+      <div class="grid-2">
+        <label>Tone
+          <input name="tone" placeholder="Professional, Friendly, Bold, etc.">
+        </label>
+        <label>Audience Type
+          <select name="audience_type">
+            <option>B2C</option>
+            <option>B2B</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="grid-2">
+        <label>Post Style
+          <select name="post_style">
+            <option>General</option>
+            <option>Thought Leadership</option>
+            <option>How-To</option>
+            <option>Listicle</option>
+            <option>Case Study</option>
+          </select>
+        </label>
+
+        <label>Preferred Word Count
+          <select name="word_count">
+            <option value="short">Short</option>
+            <option value="medium" selected>Medium</option>
+            <option value="long">Long</option>
+          </select>
+        </label>
+      </div>
+
+      <label>Extra Notes
+        <textarea name="notes" rows="3" placeholder="Anything special to include..."></textarea>
+      </label>
+
+      <fieldset>
+        <legend>Platforms</legend>
+        <div class="pills" id="platform-pills">
+          <!-- Each pill toggles a hidden checkbox -->
+          <button type="button" data-value="Instagram" class="pill">Instagram</button>
+          <button type="button" data-value="LinkedIn" class="pill">LinkedIn</button>
+          <button type="button" data-value="TikTok" class="pill">TikTok</button>
+          <button type="button" data-value="Twitter" class="pill">Twitter</button>
+          <button type="button" data-value="Facebook" class="pill">Facebook</button>
+          <button type="button" data-select-all="true" class="pill pill-ghost">Select All</button>
+        </div>
+        <!-- hidden inputs populated by JS -->
+        <div id="platform-inputs"></div>
+      </fieldset>
+
+      <div class="grid-2">
+        <label>Email (to receive the PDF)
+          <input type="email" name="email" placeholder="you@example.com">
+        </label>
+        <label>Hashtags (optional, comma-sep)
+          <input name="hashtags" placeholder="#ai, #marketing">
+        </label>
+      </div>
+
+      <button class="btn btn-primary btn-lg" type="submit">Generate PDF</button>
+      <p class="hint">You’ll see the PDF immediately. If you provided an email, we’ll also send it to you.</p> 5a37524 (Initial commit of Content365 project)
+    </form>
+  </main>
+
+  <script>
+    (function() {
+      const pills = document.getElementById('platform-pills');
+      const inputs = document.getElementById('platform-inputs');
+      const selected = new Set();
+
+      function renderInputs() {
+        inputs.innerHTML = '';
+        [...selected].forEach(v => {
+          const i = document.createElement('input');
+          i.type = 'hidden';
+          i.name = 'platforms';
+          i.value = v;
+          inputs.appendChild(i);
+        });
+      }
+
+      pills.addEventListener('click', (e) => {
+        const btn = e.target.closest('button');
+        if (!btn) return;
+
+        if (btn.dataset.selectAll) {
+          ['Instagram','LinkedIn','TikTok','Twitter','Facebook'].forEach(v => selected.add(v));
+          pills.querySelectorAll('.pill').forEach(p => {
+            if (!p.dataset.selectAll) p.classList.add('active');
+          });
+          renderInputs();
+          return;
+        }
+
+        const val = btn.dataset.value;
+        if (!val) return;
+
+        if (selected.has(val)) {
+          selected.delete(val);
+          btn.classList.remove('active');
+        } else {
+          selected.add(val);
+          btn.classList.add('active');
+        }
+        renderInputs();
+      });
+    })();
+  </script>
+</body>
+</html>
+>>>>>>> 2ed0c2a (chore: wire Gemini provider + provider_router) 5a37524 (Initial commit of Content365 project)
+

@@ -1,0 +1,36 @@
+# Ignore virtual envs & local env files
+.venv/
+venv/
+.env
+.env.*
+.envrc
+
+# Python cache/build
+__pycache__/
+*.py[cod]
+*.pyd
+*.egg-info/
+build/
+dist/
+.cache/
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# Editors/IDE
+.vscode/
+.idea/
+
+# Generated outputs (keep fonts tracked!)
+generated/
+generated_pdfs/
+logs/
+*.log
+
+# C extensions
+*.so
+
+# Ignore old export
+Content365-v4.6-final/
+

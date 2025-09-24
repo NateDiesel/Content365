@@ -1,0 +1,14 @@
+﻿{% extends "base.html" %} 5a37524 (Initial commit of Content365 project)
+
+{% block content %}
+<div class="container">
+    <h2 class="text-2xl font-bold mb-4">Generated Content</h2>
+    <p><strong>Topic:</strong> {{ topic }}</p>
+    <p><strong>Tone:</strong> {{ tone }}</p>
+    <div class="bg-white shadow-md rounded p-4 mt-4 whitespace-pre-wrap">
+        {{ result }}
+    </div>
+    <a href="/form" class="mt-4 inline-block text-blue-600 underline">← Generate another</a> 5a37524 (Initial commit of Content365 project)
+</div>
+{% endblock %}
+

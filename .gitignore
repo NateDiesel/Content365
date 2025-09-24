@@ -34,3 +34,21 @@ logs/
 # Ignore old export
 Content365-v4.6-final/
 
+# local backups and helpers
+main.py.bak
+run.py
+
+# prefer package entrypoint (use Content365.main, not root main.py)
+/main.py
+# local backups and helpers
+main.py.bak
+run.py
+
+# prefer package entrypoint (use Content365.main, not root main.py)
+/main.py
+# local backups and helpers
+main.py.bak
+run.py
+
+# prefer package entrypoint (use Content365.main, not root main.py)
+/main.py

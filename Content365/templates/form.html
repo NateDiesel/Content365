@@ -1,0 +1,327 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<<<<<<< HEAD
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Content365 – Generate Your Pack</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Inter', sans-serif;
+      background: #f9fafb;
+      color: #1f2937;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+      padding: 1rem;
+    }
+    .container {
+      background: white;
+      padding: 2rem;
+      max-width: 480px;
+      width: 100%;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    }
+    .logo {
+      display: block;
+      margin: 0 auto 1rem;
+      width: 120px;
+    }
+    h1 {
+      font-size: 1.5rem;
+      text-align: center;
+      margin-bottom: 1rem;
+    }
+    label {
+      display: block;
+      margin: 1rem 0 0.5rem;
+    }
+    input, select {
+      width: 100%;
+      padding: 0.6rem;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+      font-size: 1rem;
+    }
+    .platforms button {
+      margin: 0.25rem;
+      padding: 0.5rem 0.75rem;
+      border: 1px solid #1e40af;
+      background: #eff6ff;
+      color: #1e40af;
+      font-weight: 600;
+      border-radius: 20px;
+      cursor: pointer;
+    }
+    .platforms button.active {
+      background: #1e40af;
+      color: white;
+    }
+    button.submit {
+      margin-top: 1.5rem;
+      width: 100%;
+      padding: 0.75rem;
+      font-size: 1.1rem;
+      background: #1e40af;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    .testimonials {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 1rem;
+      margin-top: 2rem;
+    }
+    .testimonial {
+      background: #f1f5f9;
+      padding: 1rem;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+    .testimonial strong {
+      display: block;
+      margin-top: 0.5rem;
+      color: #1e3a8a;
+    }
+    footer {
+      margin-top: 3rem;
+      padding-top: 2rem;
+      text-align: center;
+      font-size: 0.9rem;
+      color: #6b7280;
+    } 5a37524 (Initial commit of Content365 project)
+  </style>
+</head>
+<body>
+  <div class="container">
+    <img src="/static/logo.png" alt="Content365 Logo" class="logo" />
+    <h1>Generate Your Content Pack</h1>
+    <form action="/form" method="post">
+      <label>📌 Topic or Niche</label>
+      <input type="text" name="topic" placeholder="e.g. Personal Finance for Gen Z" required />
+
+      <label>🎨 Tone & Style</label>
+      <select name="tone">
+        <option value="Professional">Professional</option>
+        <option value="Friendly">Friendly</option>
+        <option value="Witty">Witty</option>
+        <option value="Bold">Bold</option>
+      </select>
+
+      <label>✍️ Blog Length</label>
+      <select name="length">
+        <option value="Short">Short (2–3 paragraphs)</option>
+        <option value="Medium" selected>Medium (3–5 paragraphs)</option>
+        <option value="Long">Long (6+ paragraphs)</option>
+      </select>
+
+      <label>📱 Social Media Platforms</label>
+      <div class="platforms">
+        <button type="button" onclick="togglePlatform(this)">Instagram</button>
+        <button type="button" onclick="togglePlatform(this)">LinkedIn</button>
+        <button type="button" onclick="togglePlatform(this)">TikTok</button>
+        <button type="button" onclick="togglePlatform(this)">Twitter</button>
+        <button type="button" onclick="togglePlatform(this)">Facebook</button>
+      </div>
+      <input type="hidden" name="platforms" id="platformsInput" />
+
+      <label>🏷️ Specific Hashtags (optional)</label>
+      <input type="text" name="hashtags" placeholder="#marketing #growth #branding" />
+
+      <label>🌐 Website URL (Optional)</label>
+      <input type="url" name="website" placeholder="https://yourbrand.com" />
+
+      <label>📧 Email (for delivery)</label>
+      <input type="email" name="email" placeholder="you@example.com" required />
+
+      <button class="submit">📦 Generate My Pack</button>
+    </form>
+
+    <div class="testimonials">
+      <div class="testimonial">
+        “Generated 3 months of content in 3 minutes.”<br><strong>– Jane D., Content Strategist</strong>
+      </div>
+      <div class="testimonial">
+        “Cleaner than the $500 packs our agency delivers — in seconds.”<br><strong>– Freelance Marketer</strong>
+      </div>
+      <div class="testimonial">
+        “Like having an AI copywriter in my pocket.”<br><strong>– Newsletter Creator</strong>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    © 2025 <strong>Content365.xyz</strong> — Built with ❄️ and ❤️<br>
+    <a href="mailto:contact@content365.xyz">contact@content365.xyz</a>
+  </footer>
+
+  <script>
+    function togglePlatform(button) {
+      button.classList.toggle('active');
+      const active = Array.from(document.querySelectorAll('.platforms button.active')).map(b => b.textContent);
+      document.getElementById('platformsInput').value = active.join(',');
+    } 2ed0c2a (chore: wire Gemini provider + provider_router)
+=======
+    <nav class="nav">
+      <a class="brand" href="/"><img src="/assets/logo.png" alt="Content365 logo" /><strong>Content365</strong></a>
+      <span class="badge">v{{ version }}</span>
+    </nav>
+
+    <h1>Create your marketing pack</h1>
+    <div class="card">
+      <form id="packForm" method="post" action="/form">
+        <div class="grid">
+          <div class="row">
+            <label for="topic">Topic *</label>
+            <input id="topic" name="topic" type="text" placeholder="e.g., AI for real estate agents" required />
+            <div class="muted">We’ll generate a blog + captions + hashtags from this.</div>
+          </div>
+          <div class="row">
+            <label for="audience">Audience</label>
+            <input id="audience" name="audience" type="text" placeholder="e.g., Busy solo agents, first-time founders" />
+          </div>
+          <div class="row">
+            <label for="tone">Tone</label>
+            <select id="tone" name="tone">
+              <option value="">Default</option>
+              <option>Friendly</option>
+              <option>Professional</option>
+              <option>Persuasive</option>
+              <option>Inspirational</option>
+              <option>Playful</option>
+            </select>
+          </div>
+          <div class="row">
+            <label for="post_style">Post style</label>
+            <select id="post_style" name="post_style">
+              <option selected>General</option>
+              <option>How-To</option>
+              <option>Thought Leadership</option>
+              <option>Listicle</option>
+              <option>Story</option>
+              <option>Case Study</option>
+            </select>
+          </div>
+          <div class="row">
+            <label for="audience_type">Audience type</label>
+            <select id="audience_type" name="audience_type">
+              <option selected>B2C</option>
+              <option>B2B</option>
+              <option>Nonprofit</option>
+              <option>Local</option>
+            </select>
+          </div>
+          <div class="row">
+            <label for="word_count">Length</label>
+            <select id="word_count" name="word_count">
+              <option value="short">Short</option>
+              <option value="medium" selected>Medium</option>
+              <option value="long">Long</option>
+            </select>
+          </div>
+          <div class="row" style="grid-column:1 / -1">
+            <label for="notes">Notes / must-include points</label>
+            <textarea id="notes" name="notes" placeholder="Key facts, CTAs, links to include..."></textarea>
+          </div>
+          <div class="row">
+            <label for="hashtags">Preferred hashtags</label>
+            <input id="hashtags" name="hashtags" type="text" placeholder="#content #marketing #growth" />
+          </div>
+          <div class="row">
+            <label for="email">Email (optional)</label>
+            <input id="email" name="email" type="email" placeholder="Get the PDF by email" />
+          </div>
+
+          <div class="row" style="grid-column:1 / -1">
+            <label>Platforms</label>
+
+            <div class="actions" style="margin:-4px 0 8px">
+              <button type="button" id="btnAll" class="btn-ghost">Select all</button>
+              <button type="button" id="btnNone" class="btn-ghost">Clear all</button>
+            </div>
+
+            <div class="pills" id="platformPills">
+              <!-- name="platforms" is required by FastAPI List[str] -->
+              <label class="pill"><input type="checkbox" name="platforms" value="Instagram"> Instagram</label>
+              <label class="pill"><input type="checkbox" name="platforms" value="LinkedIn"> LinkedIn</label>
+              <label class="pill"><input type="checkbox" name="platforms" value="TikTok"> TikTok</label>
+              <label class="pill"><input type="checkbox" name="platforms" value="Twitter"> X / Twitter</label>
+              <label class="pill"><input type="checkbox" name="platforms" value="Facebook"> Facebook</label>
+            </div>
+            <div class="muted">Leave all unchecked to auto-generate for all platforms.</div>
+          </div>
+        </div>
+
+        <div class="actions" style="margin-top:16px;">
+          <button id="submitBtn" class="btn" type="submit">Generate PDF</button>
+          <span class="muted">Your PDF will download automatically.</span>
+        </div>
+      </form>
+    </div>
+
+    <footer>
+      <div class="foot">
+        <div>&copy; {{ now().year }} Content365 &mdash; Smart marketing packs</div>
+        <div class="muted">Need help? contact@content365.xyz</div>
+      </div>
+    </footer>
+  </div>
+
+  <script>
+    // Disable button on submit
+    const form = document.getElementById('packForm');
+    const btn  = document.getElementById('submitBtn');
+    form.addEventListener('submit', () => {
+      btn.disabled = true;
+      btn.textContent = 'Generating…';
+    });
+
+    // Select all / none for platforms
+    const boxes = () => Array.from(document.querySelectorAll('input[name="platforms"]'));
+    document.getElementById('btnAll').addEventListener('click', () => {
+      boxes().forEach(cb => cb.checked = true);
+      saveForm();
+    });
+    document.getElementById('btnNone').addEventListener('click', () => {
+      boxes().forEach(cb => cb.checked = false);
+      saveForm();
+    });
+
+    // Lightweight persistence so users don’t lose inputs
+    const fields = ['topic','audience','tone','post_style','audience_type','word_count','notes','hashtags','email'];
+
+    function saveForm(){
+      const data = {};
+      fields.forEach(id => data[id] = (document.getElementById(id) || {}).value || '');
+      data.platforms = boxes().filter(cb => cb.checked).map(cb => cb.value);
+      localStorage.setItem('c365_form', JSON.stringify(data));
+    }
+    function restoreForm(){
+      try{
+        const raw = localStorage.getItem('c365_form');
+        if(!raw) return;
+        const data = JSON.parse(raw);
+        fields.forEach(id => {
+          const el = document.getElementById(id);
+          if(el && data[id] != null) el.value = data[id];
+        });
+        const set = new Set(data.platforms || []);
+        boxes().forEach(cb => cb.checked = set.has(cb.value));
+      }catch(e){}
+    }
+    restoreForm();
+    document.querySelectorAll('input, textarea, select').forEach(el => {
+      el.addEventListener('change', saveForm);
+      el.addEventListener('input', saveForm);
+    });
+>>>>>>> 5a37524 (Initial commit of Content365 project)
+  </script>
+</body>
+</html>
+
