@@ -1,0 +1,82 @@
+%PDF-1.4
+%‚„œ”
+1 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Name /F1 >>
+endobj
+2 0 obj
+<< /Length 2258 >>
+stream
+0.85 g 0 756 612 24 re f 0 g
+0.95 g 0 24 612 18 re f 0 g
+BT /F1 11 Tf 498 30 Td (Page 1 of 1) Tj ET
+BT /F1 11 Tf 54 690 Td 14 TL (WRAPPING TEST) Tj
+ET
+BT /F1 11 Tf 54 664 Td 14 TL (This is a very long caption intended to test line wrapping and fallback pagination in the) Tj
+ET
+BT /F1 11 Tf 54 650 Td 14 TL (minimal PDF builder. It should wrap across multiple lines without crashing or overlapping) Tj
+ET
+BT /F1 11 Tf 54 636 Td 14 TL (the footer region.) Tj
+ET
+BT /F1 11 Tf 54 612 Td 14 TL (KEY POINTS) Tj
+ET
+BT /F1 11 Tf 54 592 Td 14 TL (? One) Tj
+ET
+BT /F1 11 Tf 54 578 Td 14 TL (? Two) Tj
+ET
+BT /F1 11 Tf 54 564 Td 14 TL (? Three) Tj
+ET
+BT /F1 11 Tf 54 540 Td 14 TL (SOCIAL CAPTIONS BY PLATFORM) Tj
+ET
+BT /F1 11 Tf 54 514 Td 14 TL (TWITTER) Tj
+ET
+BT /F1 11 Tf 54 494 Td 14 TL (This is a very long caption intended to test line wrapping and fallback pagination in the) Tj
+ET
+BT /F1 11 Tf 54 480 Td 14 TL (minimal PDF builder. It should wrap across multiple lines without crashing or overlapping) Tj
+ET
+BT /F1 11 Tf 54 466 Td 14 TL (the footer region.This is a very long caption intended to test line wrapping and fallback) Tj
+ET
+BT /F1 11 Tf 54 452 Td 14 TL (pagination in the minimal PDF builder. It should wrap across multiple lines without) Tj
+ET
+BT /F1 11 Tf 54 438 Td 14 TL (crashing or overlapping the footer region.This is a very long caption intended to test line) Tj
+ET
+BT /F1 11 Tf 54 424 Td 14 TL (wrapping and fallback pagination in the minimal PDF builder. It should wrap across multiple) Tj
+ET
+BT /F1 11 Tf 54 410 Td 14 TL (lines without crashing or overlapping the footer region.This is a very long caption) Tj
+ET
+BT /F1 11 Tf 54 396 Td 14 TL (intended to test line wrapping and fallback pagination in the minimal PDF builder. It) Tj
+ET
+BT /F1 11 Tf 54 382 Td 14 TL (should wrap across multiple lines without crashing or overlapping the footer region.This is) Tj
+ET
+BT /F1 11 Tf 54 368 Td 14 TL (a very long caption intended to test line wrapping and fallback pagination in the minimal) Tj
+ET
+BT /F1 11 Tf 54 354 Td 14 TL (PDF builder. It should wrap across multiple lines without crashing or overlapping the) Tj
+ET
+BT /F1 11 Tf 54 340 Td 14 TL (footer region.) Tj
+ET
+BT /F1 11 Tf 54 322 Td 14 TL (Hashtags: #One, #Two, #Three, #Four) Tj
+ET
+
+endstream
+endobj
+3 0 obj
+<< /Type /Page /Parent 4 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 1 0 R >> >> /Contents 2 0 R >>
+endobj
+4 0 obj
+<< /Type /Pages /Kids [3 0 R] /Count 1 >>
+endobj
+5 0 obj
+<< /Type /Catalog /Pages 4 0 R >>
+endobj
+xref
+0 6
+0000000000 65535 f 
+0000000015 00000 n 
+0000000095 00000 n 
+0000002405 00000 n 
+0000002531 00000 n 
+0000002588 00000 n 
+trailer
+<< /Size 6 /Root 5 0 R >>
+startxref
+2637
+%%EOF

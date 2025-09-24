@@ -1,0 +1,34 @@
+[PROJECT STARTUP CONFIG]
+Name: Content365
+Type: AI SaaS - GPT-powered content generator
+Founder: Nathan Bentley
+
+[OBJECTIVES]
+- Save creators and founders 8-10 hours/week on content planning
+- Auto-generate blog, social captions, hashtags, SEO blocks
+- Monetize via Stripe with upsell flow
+- Deliver value instantly (no AI fluff)
+
+[TARGET USERS]
+- Solopreneurs
+- Coaches & consultants
+- B2B founders & content creators
+
+[KEY MODULES]
+- OpenRouter GPT integration
+- Platform-specific hashtag generator
+- Smart PDF formatter (ReportLab)
+- Stripe billing + fallback logic
+- Email delivery with SendGrid
+
+[KPIs]
+- Conversion rate from visitor → download
+- Number of paid orders per day
+- Resume rate of returning users
+- PDF generation success/failure rate
+
+[POSTMORTEM TEMPLATE]
+1. What went well?
+2. What bottlenecks were encountered?
+3. How can we automate or improve v2?
+4. What did users love most?

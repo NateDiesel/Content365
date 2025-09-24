@@ -1,0 +1,47 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Content365 – Preview</title>
+  <style>
+    :root { --bg:#0b0f14; --card:#0f1720; --muted:#9aa4af; --acc:#0a66c2; }
+    body { margin:0; font-family: system-ui,-apple-system,Segoe UI,Inter,Roboto,sans-serif; background:#0b0f14; color:#eef2f6; }
+    .wrap { max-width: 980px; margin: 24px auto; padding: 0 16px; }
+    header { display:flex; align-items:center; gap:12px; margin-bottom: 12px; }
+    header img { height:40px; width:auto; }
+    .sub { color: var(--muted); font-size: 14px; }
+    .card { background: var(--card); border:1px solid #1f2a37; border-radius: 14px; padding: 16px; }
+    .row { display:flex; align-items:center; gap:12px; justify-content: space-between; margin-bottom: 12px; }
+    .btns a { text-decoration:none; color:white; background: var(--acc); padding:10px 14px; border-radius: 10px; }
+    .btns a.secondary { background: transparent; border:1px solid #2a3b4f; color:#e5edf6; }
+    .pdf { width:100%; height: 72vh; border: none; border-radius: 12px; }
+    .meta { color: var(--muted); font-size: 13px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <img src="/assets/logo.png" alt="Content365">
+      <div>
+        <h2 style="margin:0">Your content pack is ready</h2>
+        <div class="sub">Quick preview below — then download the full PDF.</div>
+      </div>
+    </header>
+
+    <div class="card">
+      <div class="row">
+        <div class="btns">
+          <a href="{{ download_url }}">Download PDF</a>
+          <a class="secondary" href="/">Generate another</a>
+        </div>
+        <div class="meta">{{ file_name }}</div>
+      </div>
+
+      <object class="pdf" data="{{ pdf_url }}" type="application/pdf">
+        <iframe class="pdf" src="{{ pdf_url }}"></iframe>
+      </object>
+    </div>
+  </div>
+</body>
+</html>

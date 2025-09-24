@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <title>Thank you — Content365</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <link rel="icon" href="/static/favicon.ico">
+  <link rel="stylesheet" href="/static/site.css">
+</head>
+<body class="page">
+  <main class="container center">
+    <h1>Thank you!</h1>
+    <p>Your payment was received. We’re generating your marketing pack.</p>
+    <p><a class="btn btn-primary" href="/form">Create another pack</a></p>
+  </main>
+</body>
+</html>
