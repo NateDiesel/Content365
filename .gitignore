@@ -52,3 +52,16 @@ run.py
 
 # prefer package entrypoint (use Content365.main, not root main.py)
 /main.py
+generated_pdfs/
+Content365/tmp/
+Content365/output.pdf
+*.log
+
+.venv/
+venv/
+ENV/
+
+.vscode/
+.idea/
+Thumbs.db
+.DS_Store
