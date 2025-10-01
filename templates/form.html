@@ -1,0 +1,172 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Content365 – Generate Your Pack</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Inter', sans-serif;
+      background: #f9fafb;
+      color: #1f2937;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+      padding: 1rem;
+    }
+    .container {
+      background: white;
+      padding: 2rem;
+      max-width: 480px;
+      width: 100%;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    }
+    .logo {
+      display: block;
+      margin: 0 auto 1rem;
+      width: 120px;
+    }
+    h1 {
+      font-size: 1.5rem;
+      text-align: center;
+      margin-bottom: 1rem;
+    }
+    label {
+      display: block;
+      margin: 1rem 0 0.5rem;
+    }
+    input, select {
+      width: 100%;
+      padding: 0.6rem;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+      font-size: 1rem;
+    }
+    .platforms button {
+      margin: 0.25rem;
+      padding: 0.5rem 0.75rem;
+      border: 1px solid #1e40af;
+      background: #eff6ff;
+      color: #1e40af;
+      font-weight: 600;
+      border-radius: 20px;
+      cursor: pointer;
+    }
+    .platforms button.active {
+      background: #1e40af;
+      color: white;
+    }
+    button.submit {
+      margin-top: 1.5rem;
+      width: 100%;
+      padding: 0.75rem;
+      font-size: 1.1rem;
+      background: #1e40af;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    .testimonials {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 1rem;
+      margin-top: 2rem;
+    }
+    .testimonial {
+      background: #f1f5f9;
+      padding: 1rem;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+    .testimonial strong {
+      display: block;
+      margin-top: 0.5rem;
+      color: #1e3a8a;
+    }
+    footer {
+      margin-top: 3rem;
+      padding-top: 2rem;
+      text-align: center;
+      font-size: 0.9rem;
+      color: #6b7280;
+    } 5a37524 (Initial commit of Content365 project)
+  </style>
+</head>
+<body>
+  <div class="container">
+    <img src="/static/logo.png" alt="Content365 Logo" class="logo" />
+    <h1>Generate Your Content Pack</h1>
+    <form action="/form" method="post">
+      <label>📌 Topic or Niche</label>
+      <input type="text" name="topic" placeholder="e.g. Personal Finance for Gen Z" required />
+
+      <label>🎨 Tone & Style</label>
+      <select name="tone">
+        <option value="Professional">Professional</option>
+        <option value="Friendly">Friendly</option>
+        <option value="Witty">Witty</option>
+        <option value="Bold">Bold</option>
+      </select>
+
+      <label>✍️ Blog Length</label>
+      <select name="length">
+        <option value="Short">Short (2–3 paragraphs)</option>
+        <option value="Medium" selected>Medium (3–5 paragraphs)</option>
+        <option value="Long">Long (6+ paragraphs)</option>
+      </select>
+
+      <label>📱 Social Media Platforms</label>
+      <div class="platforms">
+        <button type="button" onclick="togglePlatform(this)">Instagram</button>
+        <button type="button" onclick="togglePlatform(this)">LinkedIn</button>
+        <button type="button" onclick="togglePlatform(this)">TikTok</button>
+        <button type="button" onclick="togglePlatform(this)">Twitter</button>
+        <button type="button" onclick="togglePlatform(this)">Facebook</button>
+      </div>
+      <input type="hidden" name="platforms" id="platformsInput" />
+
+      <label>🏷️ Specific Hashtags (optional)</label>
+      <input type="text" name="hashtags" placeholder="#marketing #growth #branding" />
+
+      <label>🌐 Website URL (Optional)</label>
+      <input type="url" name="website" placeholder="https://yourbrand.com" />
+
+      <label>📧 Email (for delivery)</label>
+      <input type="email" name="email" placeholder="you@example.com" required />
+
+      <button class="submit">📦 Generate My Pack</button>
+    </form>
+
+    <div class="testimonials">
+      <div class="testimonial">
+        “Generated 3 months of content in 3 minutes.”<br><strong>– Jane D., Content Strategist</strong>
+      </div>
+      <div class="testimonial">
+        “Cleaner than the $500 packs our agency delivers — in seconds.”<br><strong>– Freelance Marketer</strong>
+      </div>
+      <div class="testimonial">
+        “Like having an AI copywriter in my pocket.”<br><strong>– Newsletter Creator</strong>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    © 2025 <strong>Content365.xyz</strong> — Built with ❄️ and ❤️<br>
+    <a href="mailto:contact@content365.xyz">contact@content365.xyz</a>
+  </footer>
+
+  <script>
+    function togglePlatform(button) {
+      button.classList.toggle('active');
+      const active = Array.from(document.querySelectorAll('.platforms button.active')).map(b => b.textContent);
+      document.getElementById('platformsInput').value = active.join(',');
+    } 2ed0c2a (chore: wire Gemini provider + provider_router)
+  </script>
+</body>
+</html>
+

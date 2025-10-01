@@ -1,0 +1,164 @@
+﻿﻿<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Content365 — Smart Marketing Packs in Minutes</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="Generate a complete marketing content pack—blog, captions, and smart hashtags—tailored to your topic in minutes." />
+
+  <!-- Open Graph -->
+  <meta property="og:title" content="Content365 — Smart Marketing Packs in Minutes" />
+  <meta property="og:description" content="Blog + social captions + platform-specific hashtags, ready to post." />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="{{ request.url }}" />
+  <meta property="og:image" content="/assets/logo_wordmark_pro_blue.png" />
+
+  <!-- Twitter -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Content365 — Smart Marketing Packs in Minutes" />
+  <meta name="twitter:description" content="Blog + social captions + platform-specific hashtags, ready to post." />
+  <meta name="twitter:image" content="/assets/logo_wordmark_pro_blue.png" />
+
+  <!-- Icons -->
+  <link rel="icon" type="image/x-icon" href="/assets/favicon.ico" />
+  <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png" />
+  <meta name="theme-color" content="#0D6EFD" />
+
+  <!-- Optional: preload brand mark for snappy paint -->
+  <link rel="preload" as="image" href="/assets/logo.png" imagesrcset="/assets/logo.png" imagesizes="40px" />
+
+  <style>
+    :root{
+      --bg:#070a10; --bg2:#0b0f19;
+      --card:#0e1526; --card2:#0d1220; --stroke:#1c2742;
+      --text:#e8ecf7; --muted:#a9b3c9;
+      --primary:#2f6df6; --accent:#7cc4ff; --ring:rgba(47,109,246,.35)
+    }
+    *{box-sizing:border-box} html,body{height:100%}
+    body{
+      margin:0; color:var(--text);
+      font:16px/1.6 system-ui,-apple-system,"Segoe UI",Roboto,Ubuntu,Cantarell,"Helvetica Neue",Arial,"Noto Sans","Apple Color Emoji","Segoe UI Emoji";
+      background:
+        radial-gradient(1200px 700px at 20% -10%, rgba(47,109,246,.12), transparent),
+        radial-gradient(900px 500px at 120% 20%, rgba(124,196,255,.10), transparent),
+        linear-gradient(180deg,var(--bg),var(--bg2));
+      min-height:100vh; display:flex; flex-direction:column;
+    }
+    .container{max-width:1120px; margin:0 auto; padding:32px 20px; width:100%}
+    .nav{display:flex; align-items:center; justify-content:space-between; gap:16px}
+    .brand{display:flex; align-items:center; gap:12px; text-decoration:none; color:inherit}
+    .brand img{width:40px; height:40px; border-radius:10px}
+    .badge{font-size:12px; color:var(--muted); border:1px solid var(--stroke); padding:6px 10px; border-radius:999px; background:rgba(255,255,255,.02)}
+    .hero{display:grid; grid-template-columns:1.15fr .85fr; gap:36px; align-items:center; margin-top:40px}
+    @media (max-width:980px){ .hero{grid-template-columns:1fr} }
+    h1{
+      font-size:clamp(34px,5.2vw,56px); line-height:1.05; margin:8px 0 14px;
+      background:linear-gradient(92deg,#ffffff 10%, #bcd7ff 45%, #7cc4ff 85%);
+      -webkit-background-clip:text; background-clip:text; color:transparent;
+      letter-spacing:.2px;
+    }
+    .sub{color:var(--muted); font-size:18px; margin-bottom:24px}
+    .cta-row{display:flex; gap:12px; flex-wrap:wrap}
+    .btn{
+      background:var(--primary); color:#fff; border:0; border-radius:14px; padding:13px 18px;
+      text-decoration:none; display:inline-flex; align-items:center; gap:10px; font-weight:700;
+      box-shadow:0 8px 24px var(--ring), inset 0 1px 0 rgba(255,255,255,.08);
+      transition:transform .05s ease, box-shadow .15s ease;
+    }
+    .btn:hover{transform:translateY(-1px); box-shadow:0 12px 28px var(--ring)}
+    .btn.secondary{background:transparent; color:var(--text); border:1px solid var(--stroke)}
+    .card{
+      background:linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02));
+      border:1px solid var(--stroke); border-radius:18px; padding:20px;
+      backdrop-filter:saturate(130%) blur(6px);
+      box-shadow:0 10px 30px rgba(0,0,0,.25), inset 0 1px 0 rgba(255,255,255,.04);
+    }
+    .list{display:grid; gap:12px; margin:0; padding:0; list-style:none; color:var(--muted)}
+    .li{display:flex; gap:10px; align-items:flex-start}
+    .check{width:20px; height:20px; border-radius:999px; display:inline-grid; place-items:center;
+      background:rgba(47,109,246,.15); color:#bcd7ff; border:1px solid var(--stroke); font-size:12px}
+    .pill{display:inline-flex; align-items:center; gap:8px; padding:8px 12px; border:1px solid var(--stroke);
+      border-radius:999px; color:var(--muted); font-size:13px; background:rgba(255,255,255,.02)}
+    .grid{display:grid; grid-template-columns:1fr 1fr; gap:18px; margin-top:20px}
+    @media (max-width:980px){ .grid{grid-template-columns:1fr} }
+    footer{margin-top:auto; color:var(--muted); border-top:1px solid var(--stroke)}
+    .foot{display:flex; justify-content:space-between; gap:12px; padding:18px 0; flex-wrap:wrap}
+    .hint{color:var(--muted); font-size:13px}
+    .previewTitle{color:#c9d6f5; font-weight:600; margin-bottom:10px}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <nav class="nav" aria-label="Primary">
+      <a class="brand" href="/">
+        <img src="/assets/logo.png"
+             alt="Content365 logo"
+             loading="eager"
+             onerror="this.onerror=null;this.src='/assets/logo.png';" />
+        <strong>Content365</strong>
+      </a>
+      <span class="badge">v{{ version }}</span>
+    </nav>
+
+    <section class="hero">
+      <div>
+        <h1>Generate a complete content pack in minutes.</h1>
+        <p class="sub">Blog post, platform-ready captions, and smart hashtags tailored to your topic. Export a polished PDF your clients will love.</p>
+        <div class="cta-row">
+          <a class="btn" href="/form">Create my pack &rarr;</a>
+          <a class="btn secondary" href="/sample" target="_blank" rel="noopener">View sample PDF</a>
+        </div>
+
+        <div class="grid">
+          <div class="card">
+            <ul class="list">
+              <li class="li"><span class="check">&#10004;</span> Thought-leadership or how-to blog</li>
+              <li class="li"><span class="check">&#10004;</span> Captions for Instagram, LinkedIn, TikTok, X, Facebook</li>
+              <li class="li"><span class="check">&#10004;</span> Platform-specific hashtag sets</li>
+              <li class="li"><span class="check">&#10004;</span> Brand styling in the PDF</li>
+            </ul>
+          </div>
+          <div class="card" style="display:grid;gap:10px;">
+            <div class="pill">&#9889; Powered by Gemini · Input-aware</div>
+            <div class="pill">&#128179; Stripe-ready (toggle when live)</div>
+            <div class="pill">&#128196; PDF with logo &amp; footer</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="previewTitle">&#128196; PDF preview</div>
+        <img
+          src="/static/preview-1.png"
+          alt="PDF preview"
+          style="width:100%; border-radius:14px; border:1px solid var(--stroke);"
+          loading="lazy"
+        />
+        <div class="hint">
+          Tip: place your brand mark at <code>/assets/logo.png</code>.
+          Update social preview (<code>og:image</code>) at <code>/assets/logo_wordmark_pro_blue.png</code>.
+        </div>
+      </div>
+    </section>
+
+    <section style="margin-top:26px;">
+      <div class="card">
+        <h3 style="margin:0 0 6px;">How it works</h3>
+        <ol class="list" style="color:var(--text);">
+          <li>1) Tell us your topic, tone, audience, platforms.</li>
+          <li>2) We generate a blog + captions + hashtags.</li>
+          <li>3) You download a polished, branded PDF.</li>
+        </ol>
+      </div>
+    </section>
+
+    <footer>
+      <div class="foot">
+        <div>&copy; {{ year }} Content365 — Smart marketing packs</div>
+        <div class="hint">Need help? contact@content365.xyz</div>
+      </div>
+    </footer>
+  </div>
+</body>
+</html>
+
