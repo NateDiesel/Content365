@@ -1,595 +1,1125 @@
-# utils/pdf_generator.py
-# -*- coding: utf-8 -*-
+﻿# -*- coding: utf-8 -*-
+"""
+Content365 premium PDF generator — Enterprise polish (stable)
+
+- Unicode/emoji-safe (DejaVu fallback → Helvetica) with sanitizer on fallback hosts
+- Branded header + footer + optional watermark
+- Clean hierarchy, bullets, CTA card, platform banners
+- Clickable hyperlinks in body/social/footer
+- Optional QR code block + footer QR
+- Inline IMAGES via <img src="..."> in blog_html (local/relative only) — handled as flowables
+- Safe HTML subset (defensive)
+- Robust image handling (fix/skip broken streams)
+- Strict output verification + crisp exceptions
+"""
 from __future__ import annotations
 
+import io
 import os
 import re
-from typing import Dict, Any, List, Optional, Tuple
+import uuid
+import shutil
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple
+from datetime import datetime
 
-from reportlab.lib.pagesizes import letter
-from reportlab.lib import colors
-from reportlab.lib.units import inch
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.platypus import (
-    SimpleDocTemplate, Paragraph, Spacer, Image, Table, TableStyle, Flowable
+# --------------------- ReportLab imports (premium engine) ---------------------
+try:
+    from reportlab.lib import colors
+    from reportlab.lib.pagesizes import LETTER
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.units import inch
+    from reportlab.platypus import (
+        SimpleDocTemplate, Paragraph, Spacer, HRFlowable,
+        ListFlowable, ListItem, KeepTogether, Table, TableStyle, Image as RLImage
+    )
+    from reportlab.lib.utils import ImageReader
+    from reportlab.pdfbase import pdfmetrics
+    from reportlab.pdfbase.ttfonts import TTFont
+    from reportlab.pdfgen.canvas import Canvas
+    # Optional QR rendering
+    from reportlab.graphics.barcode import qr as rl_qr  # pragma: no cover
+    from reportlab.graphics.shapes import Drawing      # pragma: no cover
+    from reportlab.graphics import renderPDF           # pragma: no cover
+except Exception:  # pragma: no cover
+    colors = None
+    LETTER = (612, 792)
+    getSampleStyleSheet = lambda: {}  # type: ignore
+    ParagraphStyle = object  # type: ignore
+    SimpleDocTemplate = object  # type: ignore
+    Paragraph = object  # type: ignore
+    Spacer = object  # type: ignore
+    HRFlowable = object  # type: ignore
+    ListFlowable = object  # type: ignore
+    ListItem = object  # type: ignore
+    KeepTogether = object  # type: ignore
+    Table = object  # type: ignore
+    TableStyle = object  # type: ignore
+    RLImage = object  # type: ignore
+    ImageReader = object  # type: ignore
+    pdfmetrics = None
+    TTFont = object  # type: ignore
+    Canvas = object  # type: ignore
+    rl_qr = None     # type: ignore
+    Drawing = object # type: ignore
+    renderPDF = None # type: ignore
+    # IMPORTANT: provide a safe unit fallback so downstream defaults don't crash
+    inch = 72  # type: ignore
+
+# PIL for robust image loading/fixing (optional)
+try:
+    from PIL import Image, ImageFile  # pragma: no cover
+    ImageFile.LOAD_TRUNCATED_IMAGES = True
+except Exception:  # pragma: no cover
+    Image = None
+
+# after the try/except that imports reportlab and defines fallbacks
+_HAS_REPORTLAB = not (
+    colors is None
+    or Paragraph is object
+    or SimpleDocTemplate is object
+    or ParagraphStyle is object
 )
-from reportlab.pdfbase import pdfmetrics
-from reportlab.pdfbase.ttfonts import TTFont
-from reportlab.pdfgen.canvas import Canvas
-from reportlab.lib.utils import ImageReader
 
-# =============================================================================
-# Configuration
-# =============================================================================
-LOGO_MAX_W = 56   # points
-LOGO_MAX_H = 56   # points
-HEADER_GUTTER = 10  # space between logo and title block
-
-PLATFORM_ORDER = ["Instagram", "LinkedIn", "TikTok", "Twitter", "Facebook"]
-
-PLATFORM_COLORS: Dict[str, colors.Color] = {
-    "Instagram": colors.Color(0.91, 0.33, 0.48),
-    "LinkedIn":  colors.Color(0.00, 0.44, 0.71),
-    "TikTok":    colors.Color(0.10, 0.10, 0.10),
-    "Twitter":   colors.Color(0.11, 0.63, 0.95),
-    "Facebook":  colors.Color(0.23, 0.35, 0.60),
-}
-
-# =============================================================================
-# Safe logo loader (prevents layout explosions)
-# =============================================================================
-def _safe_logo_image(path: str, max_w: int = LOGO_MAX_W, max_h: int = LOGO_MAX_H) -> Optional[Image]:
-    if not path or not os.path.exists(path):
-        return None
-    try:
-        reader = ImageReader(path)
-        iw, ih = reader.getSize()
-        if not iw or not ih:
-            return None
-        scale = min(max_w / float(iw), max_h / float(ih), 1.0)
-        dw, dh = iw * scale, ih * scale
-        img = Image(path, width=dw, height=dh, mask='auto')
-        img.hAlign = "LEFT"
-        return img
-    except Exception:
-        return None
-
-def _resolve_logo_path(p: str) -> Optional[str]:
-    if p and os.path.isabs(p) and os.path.exists(p):
-        return p
-    for c in [p or "", "assets/logo.png", "static/logo.png",
-              os.path.join(os.getcwd(), "assets", "logo.png"),
-              os.path.join(os.getcwd(), "static", "logo.png")]:
-        if c and os.path.exists(c):
-            return c
-    return None
-
-# =============================================================================
-# Font registration (DejaVu with safe fallbacks)
-# =============================================================================
-_FONT_REG_DONE = False
-_BASE_FONT = "Helvetica"
-_BASE_FONT_BOLD = "Helvetica-Bold"
-
-def _try_register_ttf(name: str, path_candidates: List[str]) -> Optional[str]:
-    for p in path_candidates:
-        try:
-            if not p or not os.path.exists(p):
-                continue
-            if os.path.getsize(p) < 1024:
-                continue
-            pdfmetrics.registerFont(TTFont(name, p))
-            return name
-        except Exception:
-            continue
-    return None
-
-def _register_fonts_once():
-    global _FONT_REG_DONE, _BASE_FONT, _BASE_FONT_BOLD
-    if _FONT_REG_DONE:
-        return
-    dvn = _try_register_ttf("DejaVuSans", [
-        "assets/fonts/DejaVuSans.ttf",
-        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
-        "/Library/Fonts/DejaVuSans.ttf",
-        "C:/Windows/Fonts/DejaVuSans.ttf",
-    ])
-    dvb = _try_register_ttf("DejaVuSans-Bold", [
-        "assets/fonts/DejaVuSans-Bold.ttf",
-        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
-        "/Library/Fonts/DejaVuSans-Bold.ttf",
-        "C:/Windows/Fonts/DejaVuSans-Bold.ttf",
-    ])
-    if dvn and dvb:
-        _BASE_FONT = "DejaVuSans"
-        _BASE_FONT_BOLD = "DejaVuSans-Bold"
-    _FONT_REG_DONE = True
-
-# =============================================================================
-# Helpers (platforms, links, hashtags, emoji)
-# =============================================================================
-def _norm_platform(p: str) -> str:
-    if not p:
-        return p
-    pl = p.strip()
-    if pl.lower() in {"x", "twitter"}:
-        return "Twitter"
-    return pl[:1].upper() + pl[1:].lower()
-
-def _icon_path(platform: str) -> Optional[str]:
-    base = "assets/icons"
-    candidates = [
-        os.path.join(base, f"{platform.lower()}.png"),
-        os.path.join(base, f"{platform.capitalize()}.png"),
+# -----------------------------------------------------------------------------
+# Fonts (Unicode coverage with graceful fallback)
+# -----------------------------------------------------------------------------
+def _register_fonts() -> dict:
+    """
+    Try to register DejaVu Sans (broad Unicode coverage). Fall back to Helvetica if not found.
+    Returns a dict of canonical font names to use in styles.
+    """
+    if pdfmetrics is None:
+        return {
+            "regular": "Helvetica",
+            "bold": "Helvetica-Bold",
+            "italic": "Helvetica-Oblique",
+            "bold_italic": "Helvetica-BoldOblique",
+        }
+    FONT_DIRS = [
+        os.path.join(os.getcwd(), "fonts"),
+        (os.path.join(os.path.dirname(__file__), "fonts") if "__file__" in globals() else None),
+        "/usr/share/fonts/truetype/dejavu",
+        "/usr/local/share/fonts",
+        "/Library/Fonts",
+        "C:\\Windows\\Fonts",
     ]
-    for c in candidates:
-        if os.path.exists(c):
-            return c
-    return None
+    FONT_DIRS = [p for p in FONT_DIRS if p and os.path.isdir(p)]
+    candidates = {
+        "regular": ["DejaVuSans.ttf"],
+        "bold": ["DejaVuSans-Bold.ttf"],
+        "italic": ["DejaVuSans-Oblique.ttf", "DejaVuSans-Italic.ttf"],
+        "bold_italic": ["DejaVuSans-BoldOblique.ttf", "DejaVuSans-BoldItalic.ttf"],
+    }
+    found: Dict[str, str] = {}
+    for role, names in candidates.items():
+        for base in FONT_DIRS:
+            for fname in names:
+                path = os.path.join(base, fname)
+                if os.path.isfile(path) and os.path.getsize(path) > 1024:
+                    try:
+                        pdfmetrics.registerFont(TTFont(f"DejaVu-{role}", path))
+                        found[role] = f"DejaVu-{role}"
+                        break
+                    except Exception:
+                        pass
+            if role in found:
+                break
+    if {"regular", "bold"} <= set(found):
+        return {
+            "regular": found["regular"],
+            "bold": found["bold"],
+            "italic": found.get("italic", found["regular"]),
+            "bold_italic": found.get("bold_italic", found["bold"]),
+        }
+    # Fallback to core 14
+    return {
+        "regular": "Helvetica",
+        "bold": "Helvetica-Bold",
+        "italic": "Helvetica-Oblique",
+        "bold_italic": "Helvetica-BoldOblique",
+    }
 
-_TAG_RX = re.compile(r"(?:#|\uFF03)([A-Za-z0-9_]+)")
+_FONTS = _register_fonts()
+FACE   = _FONTS["regular"]
+FACE_B = _FONTS["bold"]
 
-def _extract_tags_from_text(text: str) -> List[str]:
-    return [m.lower() for m in _TAG_RX.findall(text or "")]
-
-def _dedupe_preserve(seq: List[str]) -> List[str]:
-    seen = set()
-    out: List[str] = []
-    for t in seq:
-        key = str(t).lstrip("#").strip().lower()
-        if key and key not in seen:
-            seen.add(key)
-            out.append(key)
-    return out
-
-def _hashline(tags: List[str]) -> str:
-    deduped = _dedupe_preserve(tags)
-    cleaned = [f"#{str(t).lstrip('#').strip()}" for t in deduped if str(t).strip()]
-    return " ".join(cleaned)
-
-def _safe_text(x: Any) -> str:
-    return "" if x is None else str(x)
-
-# Emoji sanitization (map common emoji to safe text, strip the rest)
+# -----------------------------------------------------------------------------
+# Emoji/Text sanitizer for Helvetica fallback
+# -----------------------------------------------------------------------------
 _EMOJI_MAP = {
-    "💡": "(tip)", "🚀": "(launch)", "✅": "(done)", "🔥": "(hot)", "🎯": "(goal)",
-    "📣": "(announce)", "📈": "(growth)", "👇": "(below)", "🔗": "(link)", "✨": "*",
-    "🧠": "(insight)", "⚡": "(fast)", "❓": "?", "⭐": "*", "🔍": "(search)",
+    "✅":"✔", "✔️":"✔", "❌":"✖",
+    "➜":"→", "➡️":"→",
+    "📣":"[CTA]", "🔗":"[link]", "💡":"[idea]",
+    "⭐":"*", "🔥":"[hot]", "🚀":"[launch]", "📈":"[up]", "👇":"↓",
 }
-_EMOJI_RX = re.compile(
-    r"[\U0001F000-\U0001FAFF\U00002600-\U000026FF\U00002700-\U000027BF]",
-    flags=re.UNICODE
-)
+# Broad emoji ranges (BMP + common symbols)
+_EMOJI_RANGES = [(0x1F300,0x1FAFF), (0x1F1E6,0x1F1FF), (0x2600,0x27BF)]
 
-def _emoji_to_text(s: str) -> str:
-    if not s:
-        return ""
-    return "".join(_EMOJI_MAP.get(ch, ch) for ch in s)
+def _looks_like_emoji(ch: str) -> bool:
+    cp = ord(ch)
+    if cp in (0xFE0E, 0xFE0F):  # variation selectors
+        return True
+    for a, b in _EMOJI_RANGES:
+        if a <= cp <= b:
+            return True
+    return False
 
-def _sanitize_for_pdf(s: str) -> str:
-    t = (s or "").replace("\u00A0", " ")
-    t = _emoji_to_text(t)
-    t = _EMOJI_RX.sub("", t)
-    return t
+def _sanitize_for_font(s: str) -> str:
+    """Map/strip emoji only when DejaVu is NOT active (Helvetica fallback)."""
+    if not isinstance(s, str):
+        s = str(s or "")
+    for k, v in _EMOJI_MAP.items():
+        s = s.replace(k, v)
+    if "dejavu" not in _FONTS["regular"].lower():
+        s = "".join(ch for ch in s if not _looks_like_emoji(ch))
+    return s
 
-_LINK_RX = re.compile(r'((?:https?://|www\.)\S+|[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,})')
+# -----------------------------------------------------------------------------
+# Styles
+# -----------------------------------------------------------------------------
+if _HAS_REPORTLAB:
+    _ss = getSampleStyleSheet()
+    TITLE = ParagraphStyle("C365_Title", parent=_ss["Title"],   fontName=FACE_B, fontSize=22, leading=26, spaceAfter=6)
+    SUB   = ParagraphStyle("C365_Sub",   parent=_ss["Normal"],  fontName=FACE,   fontSize=12.5, textColor=colors.HexColor("#666666"), spaceAfter=12)
+    H2    = ParagraphStyle("C365_H2",    parent=_ss["Heading2"],fontName=FACE_B, fontSize=15, spaceBefore=8, spaceAfter=4)
+    BODY  = ParagraphStyle("C365_Body",  parent=_ss["BodyText"],fontName=FACE,   fontSize=11, leading=15, spaceAfter=8)
+    SMALL = ParagraphStyle("C365_Small", parent=_ss["Normal"],  fontName=FACE,   fontSize=9.5, leading=12, textColor=colors.HexColor("#555555"))
+    TAGS  = ParagraphStyle("C365_Tags",  parent=_ss["Normal"],  fontName=FACE,   fontSize=10, leading=13, textColor=colors.HexColor("#0B6BF2"), spaceBefore=2, spaceAfter=8)
+    CTA   = ParagraphStyle("C365_CTA",   parent=_ss["BodyText"],fontName=FACE_B, fontSize=12, leading=15, textColor=colors.HexColor("#111827"), spaceBefore=6, spaceAfter=10)
 
-def _autolink(text: str) -> str:
-    def _wrap(m):
-        s = m.group(1)
-        href = s
-        if s.startswith('www.'):
-            href = 'https://' + s
-        if '@' in s and not s.startswith(('http://', 'https://', 'www.')):
-            href = 'mailto:' + s
-        return f'<a href="{href}">{s}</a>'
-    return _LINK_RX.sub(_wrap, text or '')
+    CAPTION = ParagraphStyle(
+        "C365_Caption",
+        parent=_ss["Normal"],
+        fontName=FACE,
+        fontSize=9,
+        leading=11,
+        textColor=colors.HexColor("#6B7280"),
+        alignment=1,
+        spaceBefore=2,
+        spaceAfter=6,
+    )
+else:
+    # Dummy placeholders so references exist; they won't be used in fallback path.
+    class _DummyStyle: pass
+    TITLE = SUB = H2 = BODY = SMALL = TAGS = CTA = CAPTION = _DummyStyle()
 
-_INLINE_TAG_RX = re.compile(r'(?:#|\uFF03)[A-Za-z0-9_]+')
+# -----------------------------------------------------------------------------
+# Helpers
+# -----------------------------------------------------------------------------
+def _hex(c: Optional[str], default: str) -> str:
+    """
+    Validate and normalize to '#RRGGBB'; fall back to `default` if invalid.
+    Accepts 'RRGGBB' or '#RRGGBB' and returns '#RRGGBB'.
+    """
+    c = (c or "").strip()
+    if re.fullmatch(r"#?[0-9A-Fa-f]{6}", c):
+        return c if c.startswith("#") else f"#{c}"
+    return default
 
-def _strip_inline_hashtags(text: str) -> str:
+# Bare URL recognizer (skip things already inside href="...").
+_A_RX = re.compile(r'(?<!")\b((?:https?://|www\.)\S+)', re.I)
+
+def _auto_link(text: str) -> str:
+    """Wrap bare URLs/emails with <a> if user didn’t include anchor tags."""
     if not text:
         return ""
-    t = _INLINE_TAG_RX.sub("", text)
-    return re.sub(r"\s{2,}", " ", t).strip()
+    # Emails
+    text = re.sub(r'([A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,})', r'<a href="mailto:\1">\1</a>', text)
+    # Bare URLs
+    def repl(m):
+        s = m.group(1)
+        href = s if s.lower().startswith(("http://", "https://")) else f"https://{s}"
+        return f'<a href="{href}">{s}</a>'
+    return _A_RX.sub(repl, text)
 
-def _fallback_hashtag_rules(platform_slug: str, tags: List[str], caption_text: str = "") -> List[str]:
-    p = (_norm_platform(platform_slug) or "").strip().lower()
-    caps = {"instagram": 12, "tiktok": 5, "linkedin": 3, "twitter": 2, "facebook": 3}
-    max_n = caps.get(p, 8)
-    cleaned = []
-    for t in tags or []:
-        tt = str(t).lstrip("#").strip().lower()
-        if tt:
-            cleaned.append(tt)
-    cleaned = _dedupe_preserve(cleaned)
-    if caption_text:
-        inline = set(_extract_tags_from_text(caption_text))
-        cleaned = [t for t in cleaned if t not in inline]
-    return cleaned[:max_n]
+def _safe_html(html: str) -> str:
+    if not html:
+        return ""
+    html = re.sub(r"</?(script|style|iframe|object|embed|meta|link)[^>]*>", "", html, flags=re.I)
+    html = html.replace("\r", "")
+    return html
 
-def _apply_hashtag_rules(platform_slug: str, tags: List[str], caption_text: str = "") -> List[str]:
+def _img_reader(path: Optional[str]) -> Optional["ImageReader"]:
+    if not path:
+        return None
     try:
-        from utils.hashtag_rules import enforce_hashtag_rules as _ehr
-        return _ehr(platform_slug, tags, caption_text)
+        p = Path(path)
+        if p.exists():
+            return ImageReader(str(p))
+        return None
     except Exception:
-        return _fallback_hashtag_rules(platform_slug, tags, caption_text)
+        return None
 
-# =============================================================================
-# Flowables
-# =============================================================================
-class PlatformBanner(Flowable):
-    def __init__(self, platform: str, avail_width: float, height: float = 28.0, radius: float = 6.0):
-        super().__init__()
-        self.platform = _norm_platform(platform)
-        self.avail_width = float(avail_width or 0)
-        self.height = float(height)
-        self.radius = float(radius)
-        self.padding_x = 10.0
-        self.bg = PLATFORM_COLORS.get(self.platform, colors.Color(0.85, 0.85, 0.85))
-        self._icon_reader: Optional[ImageReader] = None
-        self._icon_w = self._icon_h = 0.0
+# Platform colors
+_PLATFORM_COLORS = {
+    "instagram": "#E1306C",
+    "linkedin":  "#0A66C2",
+    "tiktok":    "#000000",
+    "twitter":   "#1DA1F2",
+    "x":         "#000000",
+    "facebook":  "#1877F2",
+}
+def _platform_color(name: str, fallback: str = "#0B6BF2") -> Any:
+    return colors.HexColor(_PLATFORM_COLORS.get(name.lower(), fallback))
+
+# -----------------------------------------------------------------------------
+# Header / Footer / Watermark / Debug grid
+# -----------------------------------------------------------------------------
+def _draw_qr(canvas: Canvas, x: float, y: float, size: float, url: str) -> None:
+    """Draw a QR code linking to `url` at (x,y) with `size` square. Gracefully no-op if libs absent."""
+    try:
+        if rl_qr is None or renderPDF is None:
+            return
+        widget = rl_qr.QrCodeWidget(str(url))
+        bounds = widget.getBounds()
+        bw = float(bounds[2] - bounds[0]) or 1.0
+        bh = float(bounds[3] - bounds[1]) or 1.0
+        scale = min(size / bw, size / bh)
+        d = Drawing(size, size)
+        d.add(widget)
+        d.scale(scale, scale)
+        renderPDF.draw(d, canvas, x, y)
+        # Clickable link over QR
+        canvas.linkURL(
+            url if str(url).lower().startswith(("http://", "https://")) else f"https://{url}",
+            (x, y, x + size, y + size), relative=0, thickness=0, color=None
+        )
+    except Exception:
+        pass
+
+def _draw_header(canvas: "Canvas", doc, brand: Dict[str, Any], title_text: str):
+    canvas.saveState()
+    page_w, page_h = canvas._pagesize
+    primary = colors.HexColor(_hex(brand.get("primary_color"), "#0B6BF2"))
+
+    # top strip
+    strip_h = 10
+    canvas.setFillColor(primary)
+    canvas.rect(0, page_h - strip_h, page_w, strip_h, fill=1, stroke=0)
+
+    # brand + site
+    brand_name = _sanitize_for_font(brand.get("brand_name", "Content365"))
+    website_raw = (brand.get("website") or "content365.xyz").strip()
+    website = _sanitize_for_font(website_raw)
+    site_href = website_raw if website_raw.lower().startswith(("http://", "https://")) else f"https://{website_raw}"
+
+    x = doc.leftMargin
+    y = page_h - strip_h - 14
+
+    canvas.setFont(FACE_B, 12)
+    canvas.setFillColor(colors.black)
+    canvas.drawString(x, y, brand_name)
+
+    canvas.setFont(FACE, 9.5)
+    y2 = y - 12
+    canvas.setFillColor(colors.HexColor("#555555"))
+    canvas.drawString(x, y2, website)
+    if website:
+        w = canvas.stringWidth(website, FACE, 9.5)
+        canvas.linkURL(site_href, (x, y2 - 2, x + w, y2 + 10), relative=0, thickness=0, color=None)
+
+    # title (right)
+    canvas.setFont(FACE_B, 10.5)
+    canvas.setFillColor(colors.HexColor("#111827"))
+    right_x = page_w - doc.rightMargin
+    canvas.drawRightString(right_x, y, _sanitize_for_font(title_text))
+
+    # logo (optional with fallbacks)
+    logo = _img_reader(brand.get("logo_path"))
+    if not logo:
+        for _candidate in (
+            "static/content365_logo.png",
+            "static/content365-logo.png",
+            "assets/content365_logo.png",
+            "assets/content365-logo.png",
+            "static/logo.png",
+            "assets/logo.png",
+        ):
+            logo = _img_reader(_candidate)
+            if logo:
+                break
+
+    if logo:
         try:
-            ip = _icon_path(self.platform)
-            if ip:
-                self._icon_reader = ImageReader(ip)
-                iw, ih = self._icon_reader.getSize()
-                target_h = max(0.0, self.height - 10.0)
-                scale = min(target_h / float(ih or 1), 1.0)
-                self._icon_w = (iw or 0) * scale
-                self._icon_h = (ih or 0) * scale
+            iw, ih = logo.getSize()
+            max_h = float(brand.get("logo_max_h", 20))
+            s = min(1.0, max_h / float(ih))
+            w = float(iw) * s
+            h = float(ih) * s
+            lx = right_x - w
+            ly = y2 - 2
+            canvas.drawImage(logo, lx, ly, width=w, height=h, mask="auto")
         except Exception:
-            self._icon_reader = None
-        self.width = self.avail_width
+            pass
 
-    def wrap(self, availWidth, availHeight):
-        self.width = min(self.avail_width or availWidth, availWidth)
-        return self.width, self.height
+    canvas.restoreState()
 
-    def draw(self):
-        c = self.canv
-        c.saveState()
-        c.setFillColor(self.bg)
-        c.setStrokeColor(self.bg)
-        c.roundRect(0, 0, self.width, self.height, self.radius, stroke=0, fill=1)
-        if self._icon_reader and self._icon_w > 0 and self._icon_h > 0:
-            x = self.padding_x
-            y = (self.height - self._icon_h) / 2.0
-            try:
-                c.drawImage(self._icon_reader, x, y, width=self._icon_w, height=self._icon_h,
-                            mask='auto', preserveAspectRatio=True, anchor='sw')
-            except Exception:
-                pass
-        c.restoreState()
+def _draw_footer(canvas: Canvas, doc, footer_text: str, brand: Dict[str, Any]):
+    if not footer_text:
+        return
+    footer_text = _sanitize_for_font(footer_text)
+    canvas.saveState()
+    page_w, _ = canvas._pagesize
+    canvas.setStrokeColor(colors.HexColor("#E5E7EB"))
+    canvas.line(doc.leftMargin, doc.bottomMargin - 8, page_w - doc.rightMargin, doc.bottomMargin - 8)
+    canvas.setFont(FACE, 9)
+    canvas.setFillColor(colors.HexColor("#666666"))
+    x = doc.leftMargin
+    y = doc.bottomMargin - 22
+    canvas.drawString(x, y, footer_text)
 
-class CTACard(Flowable):
-    def __init__(self, text: str, avail_width: float, style: ParagraphStyle):
-        super().__init__()
-        self.text = text or ""
-        self.avail_width = float(avail_width or 0)
-        self.style = style
-        self.padding = 10
-        self.radius = 8
-        self.bg_color = colors.HexColor("#EEF6FF")
-        self.border_color = colors.HexColor("#C7E1FF")
-        self.border_width = 0.8
-        self._para: Optional[Paragraph] = None
-        self.width = self.avail_width
-        self.height = 0
+    # make first URL clickable, if any
+    m = re.search(r'(https?://\S+|[A-Za-z0-9.-]+\.[A-Za-z]{2,})', footer_text)
+    if m:
+        url = m.group(1)
+        if not url.lower().startswith(("http://", "https://")):
+            url = "https://" + url
+        w = canvas.stringWidth(footer_text, FACE, 9)
+        canvas.linkURL(url, (x, y-2, x + w, y+10), relative=0, thickness=0, color=None)
 
-    def wrap(self, availWidth, availHeight):
-        box_width = min(self.avail_width or availWidth, availWidth)
-        inner_width = max(0, box_width - 2 * self.padding)
-        self._para = Paragraph(self.text, self.style)
-        pw, ph = self._para.wrap(inner_width, availHeight)
-        self.width = box_width
-        self.height = ph + 2 * self.padding
-        return self.width, self.height
+    # Page number
+    canvas.drawRightString(page_w - doc.rightMargin, y, f"Page {canvas.getPageNumber()}")
 
-    def draw(self):
-        c = self.canv
-        c.saveState()
-        c.setFillColor(self.bg_color)
-        c.setStrokeColor(self.border_color)
-        c.setLineWidth(self.border_width)
-        c.roundRect(0, 0, self.width, self.height, self.radius, stroke=1, fill=1)
-        c.translate(self.padding, self.padding)
-        if self._para is not None:
-            self._para.drawOn(c, 0, 0)
-        c.restoreState()
-
-# =============================================================================
-# Styles
-# =============================================================================
-def _build_styles(brand_color: Tuple[float, float, float]) -> Dict[str, ParagraphStyle]:
-    _register_fonts_once()
-    base = getSampleStyleSheet()
-
-    styles = {
-        "H1": ParagraphStyle(
-            "H1", parent=base["Heading1"], fontName=_BASE_FONT_BOLD, fontSize=20, leading=24,
-            textColor=colors.black, spaceAfter=10
-        ),
-        "H2": ParagraphStyle(
-            "H2", parent=base["Heading2"], fontName=_BASE_FONT_BOLD, fontSize=14, leading=18,
-            textColor=colors.black, spaceBefore=12, spaceAfter=6
-        ),
-        "P": ParagraphStyle(
-            "P", parent=base["BodyText"], fontName=_BASE_FONT, fontSize=11.2, leading=15.2,
-            textColor=colors.black, spaceAfter=6
-        ),
-        "Bullet": ParagraphStyle(
-            "Bullet", parent=base["BodyText"], fontName=_BASE_FONT, fontSize=11.2, leading=15.2,
-            leftIndent=14, bulletIndent=4, spaceBefore=0, spaceAfter=4
-        ),
-        "Caption": ParagraphStyle(
-            "Caption", parent=base["BodyText"], fontName=_BASE_FONT, fontSize=11.5, leading=15.5,
-            textColor=colors.black, spaceBefore=6, spaceAfter=4
-        ),
-        "Hashtags": ParagraphStyle(
-            "Hashtags", parent=base["BodyText"], fontName=_BASE_FONT, fontSize=9.7, leading=13.3,
-            textColor=colors.Color(0.25, 0.25, 0.28), spaceAfter=10
-        ),
-        "CTA": ParagraphStyle(
-            "CTA", parent=base["BodyText"], fontName=_BASE_FONT_BOLD, fontSize=11.5, leading=14.5,
-            textColor=colors.Color(*brand_color)
-        ),
-        "Small": ParagraphStyle(
-            "Small", parent=base["BodyText"], fontName=_BASE_FONT, fontSize=8.8, leading=11.5,
-            textColor=colors.Color(0.28, 0.28, 0.3)
-        ),
-        "Brand": ParagraphStyle(
-            "Brand", parent=base["Heading2"], fontName=_BASE_FONT_BOLD,
-            fontSize=13.5, leading=17.0, textColor=colors.black
-        ),
-        "BrandSub": ParagraphStyle(
-            "BrandSub", parent=base["BodyText"], fontName=_BASE_FONT,
-            fontSize=10.0, leading=13.5, textColor=colors.Color(0, 0, 0, 0.6),
-            spaceBefore=1.5
-        ),
-    }
-    return styles
-
-# =============================================================================
-# Header/Footer
-# =============================================================================
-def _header_table(brand_config: Dict[str, Any], styles: Dict[str, ParagraphStyle], width: float):
-    raw_logo = brand_config.get("logo_path") or ""
-    logo_path = _resolve_logo_path(raw_logo)
-
-    brand_name = brand_config.get("brand_name", "Content365")
-    website = (brand_config.get("website") or "content365.xyz").strip()
-    website_href = ("https://" + website) if website and not website.startswith(("http://", "https://")) else website
-
-    # Logo (scaled safely) or tiny spacer
-    logo_img = _safe_logo_image(logo_path, max_w=LOGO_MAX_W, max_h=LOGO_MAX_H) or Spacer(0.01, 0.01)
-
-    # Right block: name + site
-    name_para = Paragraph(brand_name, styles["Brand"])
-    site_para = Paragraph(f'<a href="{website_href}">{website}</a>', styles["BrandSub"])
-    right_tbl = Table([[name_para], [site_para]])
-    right_tbl.setStyle(TableStyle([
-        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-        ("LEFTPADDING", (0, 0), (-1, -1), 0),
-        ("RIGHTPADDING", (0, 0), (-1, -1), 0),
-        ("TOPPADDING", (0, 0), (-1, -1), 0),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
-    ]))
-
-    # Layout math
+    # Optional QR in footer
     try:
-        logo_w = getattr(logo_img, "drawWidth", LOGO_MAX_W)
-        logo_h = getattr(logo_img, "drawHeight", LOGO_MAX_H)
+        qr_url = (brand or {}).get("qr_url") or (brand or {}).get("website")
+        if qr_url:
+            size = float((brand or {}).get("qr_size", 0.7*inch))
+            qr_x = page_w - doc.rightMargin - size
+            qr_y = doc.bottomMargin - size - 2
+            _draw_qr(canvas, qr_x, qr_y, size, str(qr_url))
     except Exception:
-        logo_w, logo_h = LOGO_MAX_W, LOGO_MAX_H
+        pass
 
-    left_col_w  = max(logo_w, 0.6 * inch) + 6  # breathing room inside logo col
-    spacer_w    = float(HEADER_GUTTER or 10)   # explicit gap between logo and text
-    right_col_w = max(0, width - left_col_w - spacer_w)
+    canvas.restoreState()
 
-    # ensure right_tbl wraps correctly at computed width
-    right_tbl._argW = [right_col_w]  # type: ignore[attr-defined]
+def _draw_watermark(canvas: Canvas, doc, text: str):
+    if not text:
+        return
+    text = _sanitize_for_font(text)
+    canvas.saveState()
+    page_w, page_h = canvas._pagesize
+    canvas.setFont(FACE_B, 50)
+    canvas.setFillColor(colors.HexColor("#EEEEEE"))
+    canvas.translate(page_w/2, page_h/2)
+    canvas.rotate(30)
+    canvas.drawCentredString(0, 0, text)
+    canvas.restoreState()
 
-    row_h = max(logo_h, 0.6 * inch)
+def _draw_debug_grid(canvas: "Canvas", doc):
+    canvas.saveState()
+    page_w, page_h = canvas._pagesize
+    canvas.setStrokeColor(colors.HexColor("#EEEEEE"))
+    x0, x1 = doc.leftMargin, page_w - doc.rightMargin
+    y0, y1 = doc.bottomMargin, page_h - doc.topMargin
+    step = 36
+    y = y0
+    while y <= y1:
+        canvas.line(x0, y, x1, y)
+        y += step
+    x = x0
+    while x <= x1:
+        canvas.line(x, y0, x, y1)
+        x += step
+    canvas.restoreState()
 
-    # 3 columns: [logo] [gutter] [name+site]
-    data = [[logo_img, "", right_tbl]]
-    col_widths = [left_col_w, spacer_w, right_col_w]
+# -----------------------------------------------------------------------------
+# Flowable builders
+# -----------------------------------------------------------------------------
+def _make_para(text: str, style: ParagraphStyle) -> Paragraph:
+    """
+    Safe Paragraph builder: try rich text; on failure, strip tags and retry.
+    Prevents 'unclosed tags' crashes from ReportLab's mini-markup.
+    """
+    try:
+        return Paragraph(text, style)
+    except Exception:
+        try:
+            plain = re.sub(r"<[^>]+>", "", text or "")
+            return Paragraph(_sanitize_for_font(plain), style)
+        except Exception:
+            return Paragraph(_sanitize_for_font("[content error]"), style)
 
-    tbl = Table(data, colWidths=col_widths, rowHeights=[row_h], hAlign="LEFT")
+def _platform_banner(name: str) -> "Table":
+    txt = f"  {name}  "
+    tbl = Table([[txt]], colWidths=["*"])
+    col = _platform_color(name)
     tbl.setStyle(TableStyle([
-        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-        ("LEFTPADDING", (0, 0), (-1, -1), 0),
-        ("RIGHTPADDING", (0, 0), (-1, -1), 0),
-        ("TOPPADDING", (0, 0), (-1, -1), 0),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
-        ("BACKGROUND", (1, 0), (1, 0), colors.white),  # keep gutter transparent
+        ("BACKGROUND",  (0,0), (-1,-1), col),
+        ("TEXTCOLOR",   (0,0), (-1,-1), colors.white),
+        ("FONTNAME",    (0,0), (-1,-1), FACE_B),
+        ("FONTSIZE",    (0,0), (-1,-1), 11.5),
+        ("ALIGN",       (0,0), (-1,-1), "LEFT"),
+        ("LEFTPADDING", (0,0), (-1,-1), 6),
+        ("RIGHTPADDING",(0,0), (-1,-1), 6),
+        ("TOPPADDING",  (0,0), (-1,-1), 4),
+        ("BOTTOMPADDING",(0,0),(-1,-1), 3),
+        ("BOX",         (0,0), (-1,-1), 0.0, col),
     ]))
     return tbl
 
-def _footer(canvas: Canvas, doc, brand_config: Dict[str, Any]):
-    footer_text = brand_config.get("footer_text", "Generated by Content365.xyz — Create your own AI marketing packs in minutes.")
-    canvas.saveState()
-    canvas.setFont(_BASE_FONT, 8.5)
-    canvas.setFillColor(colors.Color(0, 0, 0, 0.55))
-    x = doc.leftMargin
-    y = 0.5 * inch
-    if footer_text:
-        canvas.drawString(x, y, footer_text)
+def _cta_card(text: str, accent_hex: str) -> Table:
+    p = _make_para(_auto_link(_sanitize_for_font(_safe_html(text))), CTA)
+    box = Table([[p]], colWidths=["*"])
+    box.setStyle(TableStyle([
+        ("BACKGROUND",  (0,0), (-1,-1), colors.HexColor("#F3F6FF")),
+        ("BOX",         (0,0), (-1,-1), 1.0, colors.HexColor(accent_hex)),
+        ("LEFTPADDING", (0,0), (-1,-1), 10),
+        ("RIGHTPADDING",(0,0), (-1,-1), 10),
+        ("TOPPADDING",  (0,0), (-1,-1), 8),
+        ("BOTTOMPADDING",(0,0), (-1,-1), 8),
+    ]))
+    return box
+
+def _qr_block(data: str, size: int = 90) -> Optional[Any]:
     try:
-        canvas.drawRightString(doc.pagesize[0] - doc.rightMargin, y, f"Page {doc.page}")
+        if not data or rl_qr is None or Drawing is object:
+            return None
+        widget = rl_qr.QrCodeWidget(data)
+        b = widget.getBounds()
+        w = b[2] - b[0]
+        h = b[3] - b[1]
+        d = Drawing(size, size, transform=[size / w, 0, 0, size / h, 0, 0])
+        d.add(widget)
+        return d
+    except Exception:
+        return None
+
+# -----------------------------------------------------------------------------
+# HTML → Flowables
+# -----------------------------------------------------------------------------
+_IMG_TAG_RE   = re.compile(r'<img\b[^>]*?>', re.I)
+_IMG_CLOSE_RE = re.compile(r"</img\s*>", re.I)
+
+# Normalize stray <p> wrappers that confuse ReportLab's mini-markup parser
+_PARA_OPEN_RE  = re.compile(r'^\s*<p[^>]*>\s*', re.I)
+_PARA_CLOSE_RE = re.compile(r'\s*</p>\s*$', re.I)
+
+def _strip_p_wrappers(s: str) -> str:
+    if not s:
+        return s
+    s = _PARA_OPEN_RE.sub('', s)
+    s = _PARA_CLOSE_RE.sub('', s)
+    return s
+
+# Normalize to clean blocks for Paragraphs
+_PTAG_OPEN_RE  = re.compile(r'<\s*p[^>]*>', re.I)
+_PTAG_CLOSE_RE = re.compile(r'</\s*p\s*>', re.I)
+_BR_RE         = re.compile(r'<\s*br\s*/?\s*>', re.I)
+
+def _normalize_blocks(html: str) -> str:
+    """Flatten paragraph markup to plain blocks and collapse whitespace."""
+    if not html:
+        return ""
+    s = _safe_html(html)
+    s = _BR_RE.sub("\n", s)
+    s = _PTAG_OPEN_RE.sub("", s)
+    s = _PTAG_CLOSE_RE.sub("\n\n", s)
+    s = re.sub(r"\n{3,}", "\n\n", s)
+    return s.strip()
+
+def _extract_images(html: str) -> Tuple[str, List[Tuple[str, Optional[str]]]]:
+    """Return (html_without_img_tags, [(path, alt)]). Only local/relative paths kept."""
+    pairs: List[Tuple[str, Optional[str]]] = []
+
+    def _repl(m):
+        tag = m.group(0)
+        src_m = re.search(r'src=(?:"|\')([^"\']+)(?:"|\')', tag, flags=re.I)
+        alt_m = re.search(r'alt=(?:"|\')([^"\']*)(?:"|\')', tag, flags=re.I)
+        if src_m:
+            src = src_m.group(1)
+            if src and not src.lower().startswith(("http://", "https://", "data:")):
+                alt = alt_m.group(1) if alt_m else None
+                pairs.append((src, alt))
+        return ""  # remove the <img ...> tag entirely
+
+    html2 = _IMG_TAG_RE.sub(_repl, html or "")
+    html2 = _IMG_CLOSE_RE.sub("", html2)
+    return html2, pairs
+
+def _paragraphs_from_html(fragment: str) -> List[Any]:
+    normalized = _normalize_blocks(fragment)  # handles <p>, </p>, <br>
+    chunks = [c.strip() for c in re.split(r"\n{2,}", normalized) if c.strip()]
+    return [_make_para(_auto_link(_sanitize_for_font(c)), BODY) for c in chunks]
+
+def _list_from_html(list_html: str) -> Optional[ListFlowable]:
+    is_ordered = bool(re.match(r"\s*<ol", list_html, flags=re.I))
+    items = re.findall(r"<li[^>]*>(.*?)</li>", list_html, flags=re.I | re.S)
+    if not items:
+        return None
+    list_items = [ListItem(_make_para(_sanitize_for_font(_safe_html(i)), BODY), leftIndent=6) for i in items]
+    return ListFlowable(list_items, bulletType=("1" if is_ordered else "bullet"), leftIndent=10)
+
+def _make_image_flowable(p: Path, max_img_w: float) -> Optional[RLImage]:
+    """Create a robust RLImage, fixing broken images with PIL; returns None on failure."""
+    img = None
+    if Image is not None:
+        try:
+            with Image.open(str(p)) as im:
+                im.load()
+                if im.mode not in ("RGB", "RGBA"):
+                    im = im.convert("RGB")
+                buf = io.BytesIO()
+                im.save(buf, format="PNG")
+                buf.seek(0)
+                img = RLImage(buf)
+        except Exception:
+            img = None
+
+    if img is None:
+        try:
+            img = RLImage(str(p))
+        except Exception:
+            return None
+
+    try:
+        iw, ih = float(img.imageWidth), float(img.imageHeight)
+        if iw > max_img_w:
+            scale = max_img_w / iw
+            img._restrictSize(max_img_w, ih * scale)
     except Exception:
         pass
-    canvas.restoreState()
+    return img
 
-# =============================================================================
-# Normalizers for incoming payload (fixes X/Twitter key issues)
-# =============================================================================
-def _normalize_platform_map(d: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Returns a dict keyed by normalized platform names (Instagram, LinkedIn, TikTok, Twitter, Facebook).
-    If duplicates normalize to the same key, later entries win.
-    """
-    out: Dict[str, Any] = {}
-    for k, v in (d or {}).items():
-        out[_norm_platform(k)] = v
-    return out
+def _html_to_flowables(html: str, max_img_w: float) -> List[Any]:
+    html = _safe_html(html)
+    html, imgs = _extract_images(html)
 
-# =============================================================================
-# Pieces
-# =============================================================================
-def _thin_divider(width: float) -> Table:
-    t = Table([[""]], colWidths=[width], rowHeights=[0.6])
-    t.setStyle(TableStyle([
-        ("LINEBEFORE", (0, 0), (-1, -1), 0, colors.white),
-        ("LINEAFTER",  (0, 0), (-1, -1), 0, colors.white),
-        ("TOPPADDING", (0, 0), (-1, -1), 0),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
-        ("BACKGROUND", (0, 0), (-1, -1), colors.Color(0, 0, 0, 0.08)),
-    ]))
-    return t
+    flows: List[Any] = []
+    pos = 0
+    pattern = re.compile(r"(<ul[^>]*>.*?</ul>|<ol[^>]*>.*?</ol>)", re.I | re.S)
+    for m in pattern.finditer(html):
+        before = html[pos:m.start()]
+        if before.strip():
+            flows.extend(_paragraphs_from_html(before))
+        lst = _list_from_html(m.group(1))
+        if lst:
+            flows.append(lst)
+        pos = m.end()
+    tail = html[pos:]
+    if tail.strip():
+        flows.extend(_paragraphs_from_html(tail))
 
-def _platform_block(platform: str, caption_block: Any, tag_list: List[str],
-                    styles: Dict[str, ParagraphStyle], width: float, fallback_text: str = "") -> List[Any]:
-    parts: List[Any] = []
+    # images at the end (each as block)
+    for pth, alt in imgs:
+        try:
+            img_path = Path(pth)
+            if not img_path.exists():
+                msg = f'[missing image: {pth}]' if not alt else f'[missing image: {pth} — {alt}]'
+                flows.append(_make_para(_sanitize_for_font(f'<font color="#888888">{msg}</font>'), SMALL))
+                continue
 
-    plat = _norm_platform(platform)
+            img = _make_image_flowable(img_path, max_img_w)
+            if img is not None:
+                flows.append(Spacer(1, 6))
+                flows.append(img)
+                # optional centered caption
+                if alt and alt.strip():
+                    flows.append(Spacer(1, 2))
+                    flows.append(_make_para(_sanitize_for_font(alt.strip()), CAPTION))
+                flows.append(Spacer(1, 4))
+            else:
+                msg = f'[unreadable image: {pth}]' if not alt else f'[unreadable image: {pth} — {alt}]'
+                flows.append(_make_para(_sanitize_for_font(f'<font color="#888888">{msg}</font>'), SMALL))
+        except Exception:
+            msg = f'[image error: {pth}]' if not alt else f'[image error: {pth} — {alt}]'
+            flows.append(_make_para(_sanitize_for_font(f'<font color="#888888">{msg}</font>'), SMALL))
+            continue
+    return flows
 
-    # Banner
-    parts.append(PlatformBanner(plat, width, height=28))
-    parts.append(Spacer(1, 4))
+# -----------------------------------------------------------------------------
+# Main export (premium)
+# -----------------------------------------------------------------------------
+def export_pdf_response(payload: Dict[str, Any], out_dir: str = "generated_pdfs") -> str:
+    """Build a polished marketing PDF and return the absolute file path."""
+    out_dir = str(out_dir or "generated_pdfs")
+    out_path = Path(out_dir); out_path.mkdir(parents=True, exist_ok=True)
+    file_name = f"{uuid.uuid4().hex[:12]}.pdf"
+    final_path = (out_path / file_name).resolve()
 
-    # Caption text (string or dict with 'text' key)
-    if isinstance(caption_block, dict):
-        text = caption_block.get("text") or caption_block.get("caption") or ""
-    else:
-        text = caption_block or ""
-    text = _sanitize_for_pdf(_safe_text(text))
+    title    = payload.get("title", "Content365 Pack")
+    subtitle = payload.get("subtitle", "")
+    blog_html= payload.get("blog_html", "")
+    bullets  = payload.get("bullets", []) or []
+    social   = payload.get("social", []) or []
+    cta_text = payload.get("cta_text", "")
+    footer   = payload.get("footer", f"© {datetime.now().year} Content365 · content365.xyz")
+    brand    = payload.get("brand", {}) or {}
 
-    # Inline tags -> collect & strip
-    inline_from_caption = set(_extract_tags_from_text(text))
-    caption_clean = _strip_inline_hashtags(text)
+    watermark_text = payload.get("watermark") or ""  # optional
+    debug_grid     = bool(payload.get("debug_grid"))
 
-    # Merge explicit tags with inline
-    merged_tags: List[str] = list(tag_list or [])
-    merged_tags += [f"#{t}" for t in inline_from_caption if t]
-
-    # Apply platform-specific rules
-    clamped_tags = _apply_hashtag_rules(plat, merged_tags, caption_clean)
-
-    # Fallback caption if truly empty after stripping
-    if not caption_clean and not clamped_tags:
-        caption_clean = _sanitize_for_pdf(_safe_text(fallback_text))
-
-    # If still nothing, skip this platform block entirely
-    if not caption_clean and not clamped_tags:
-        return []
-
-    if caption_clean:
-        parts.append(Paragraph(_autolink(caption_clean), styles["Caption"]))
-    if clamped_tags:
-        parts.append(Paragraph(_hashline(clamped_tags), styles["Hashtags"]))
-
-    return parts
-
-# =============================================================================
-# Main builder
-# =============================================================================
-def generate_pdf(payload: Dict[str, Any], output_path: str, brand_config: Optional[Dict[str, Any]] = None) -> str:
-    """
-    Build a branded, professional PDF for Content365.
-
-    Expected payload format (flexible):
-    {
-      "blog": {
-        "headline": "...",
-        "intro": "...",
-        "body": ["para1", "para2"],
-        "bullets": ["...", "..."],
-        "cta": "..."
-      },
-      "captions": { "Instagram": "...", "LinkedIn": {"text": "..."}, ... },
-      "hashtags": { "Instagram": ["#one", "#two"], "LinkedIn": [...] }
-    }
-    """
-    brand_config = brand_config or {}
-    brand_color = brand_config.get("primary_color", (0.12, 0.46, 0.95))
-
-    _register_fonts_once()
-    styles = _build_styles(brand_color)
+    primary = colors.HexColor(_hex(brand.get("primary_color"), "#0B6BF2"))
+    accent  = _hex(brand.get("accent_color"),  "#0B6BF2")
 
     doc = SimpleDocTemplate(
-        output_path,
-        pagesize=letter,
-        leftMargin=0.75 * inch,
-        rightMargin=0.75 * inch,
-        topMargin=0.75 * inch,
-        bottomMargin=0.75 * inch,
-        title=brand_config.get("brand_name", "Content365")
+        str(final_path), pagesize=LETTER,
+        leftMargin=0.8*inch, rightMargin=0.8*inch, topMargin=0.9*inch, bottomMargin=0.9*inch,
+        title=_sanitize_for_font(title), author="Content365", subject="Marketing Content Pack", creator="Content365 PDF Engine",
     )
 
     story: List[Any] = []
-    story.append(_header_table(brand_config, styles, doc.width))
-    story.append(Spacer(1, 10))
 
-    # Blog
-    blog = (payload.get("blog") or {})
-    headline = _sanitize_for_pdf(_safe_text(blog.get("headline") or blog.get("title") or "Your Content Pack"))
-    intro = _safe_text(blog.get("intro"))
-    body_list = blog.get("body") or []
-    bullets = blog.get("bullets") or []
-    cta = _safe_text(blog.get("cta"))
-
-    story.append(Paragraph(headline, styles["H1"]))
-    if intro:
-        story.append(Paragraph(_autolink(_sanitize_for_pdf(intro)), styles["P"]))
-        story.append(Spacer(1, 2))
-    if body_list:
-        for p in body_list:
-            s = _safe_text(p)
-            if s:
-                story.append(Paragraph(_autolink(_sanitize_for_pdf(s)), styles["P"]))
-        story.append(Spacer(1, 2))
-    if bullets:
-        for b in bullets:
-            s = _safe_text(b)
-            story.append(Paragraph("• " + _autolink(_sanitize_for_pdf(s)), styles["Bullet"]))
-        story.append(Spacer(1, 2))
-    if cta:
-        story.append(CTACard(_autolink(_sanitize_for_pdf(cta)), doc.width, styles["CTA"]))
-        story.append(Spacer(1, 12))
-
-    # Divider
-    story.append(_thin_divider(doc.width))
+    # Title block
     story.append(Spacer(1, 6))
+    story.append(KeepTogether([_make_para(_sanitize_for_font(title), TITLE)]))
+    if subtitle:
+        story.append(_make_para(_sanitize_for_font(subtitle), SUB))
 
-    # Social: normalize maps so 'x'/'X' keys feed 'Twitter'
-    captions_in = _normalize_platform_map(payload.get("captions") or {})
-    hashtags_in = _normalize_platform_map(payload.get("hashtags") or {})
+    # Prepared-for subline (brand-aware)
+    _bf_name = _sanitize_for_font(brand.get("brand_name", "Content365"))
+    _bf_site = _sanitize_for_font(brand.get("website", "content365.xyz"))
+    story.append(_make_para(f"Prepared for: <b>{_bf_name}</b> · {_bf_site}", SMALL))
+    story.append(Spacer(1, 2))
+    story.append(HRFlowable(width="100%", color=primary, thickness=1.2, spaceBefore=6, spaceAfter=10))
 
-    platforms_seen = list(captions_in.keys() | hashtags_in.keys()) if hasattr(captions_in, "keys") else list(captions_in.keys())
-    ordered = [p for p in PLATFORM_ORDER if p in platforms_seen] + [p for p in platforms_seen if p not in PLATFORM_ORDER]
+    # Body (with images/lists)
+    if blog_html:
+        story.extend(_html_to_flowables(blog_html, max_img_w=doc.width))
 
-    # Fallback caption seed (so a platform never renders totally empty)
-    fallback_seed = headline
+    # Bullets (explicit field)
+    if bullets:
+        items: List[ListItem] = []
+        for b in bullets:
+            items.append(ListItem(_make_para(_sanitize_for_font(_safe_html(str(b))), BODY), leftIndent=6))
 
-    for plat in ordered:
-        cap_block = captions_in.get(plat) or {}
-        tag_list = hashtags_in.get(plat) or []
-        parts = _platform_block(plat, cap_block, tag_list, styles, doc.width, fallback_seed)
-        if parts:
-            story += parts
+        lst = ListFlowable(
+            items,
+            bulletType="bullet",
+            bulletChar="•",
+            leftIndent=10
+        )
+        story.append(lst)
+        story.append(Spacer(1, 4))
+
+    # CTA
+    if cta_text:
+        story.append(Spacer(1, 4))
+        story.append(_cta_card(cta_text, accent))
+
+    # Optional QR block in body (separate from footer QR)
+    qr_text = payload.get("qr_text") or payload.get("qr_url") or ""
+    if qr_text:
+        q = _qr_block(qr_text)
+        if q:
             story.append(Spacer(1, 10))
+            story.append(q)
 
-    def _on_page(canvas: Canvas, doc_obj):
+    # Social sections
+    if social:
+        story.append(Spacer(1, 10))
+        story.append(HRFlowable(width="100%", color=primary, thickness=1.0, spaceBefore=8, spaceAfter=6))
+        for idx, s in enumerate(social, start=1):
+            name = s.get("name", f"Platform {idx}")
+            caption = s.get("caption", "")
+            hashtags = s.get("hashtags", []) or []
+
+            story.append(_platform_banner(_sanitize_for_font(name)))
+            story.append(Spacer(1, 4))
+
+            if caption:
+                story.append(_make_para(_auto_link(_sanitize_for_font(_safe_html(caption))), BODY))
+
+            if hashtags:
+                tag_line = " ".join(
+                    (h.strip() if h.strip().startswith("#") else f"#{h.strip()}")
+                    for h in hashtags
+                    if isinstance(h, str) and h.strip()
+                )
+                if tag_line:
+                    story.append(_make_para(_sanitize_for_font(tag_line), TAGS))
+                    story.append(Spacer(1, 4))
+
+            story.append(Spacer(1, 6))
+
+    # Page callbacks
+    def _on_page(c: Canvas, d):
+        if debug_grid:
+            _draw_debug_grid(c, d)
+        _draw_watermark(c, d, watermark_text)
+        _draw_header(c, d, brand, "Content365 · Marketing Pack")
+        _draw_footer(c, d, footer, brand)
+
+    # Build & verify
+    try:
+        doc.build(story, onFirstPage=_on_page, onLaterPages=_on_page)
+    except Exception as e:
         try:
-            if getattr(doc_obj, "page", 0) == 1:
-                canvas.setAuthor(brand_config.get("brand_name", "Content365"))
-                canvas.setTitle(headline)
-                canvas.setSubject("Social content pack")
+            if final_path.exists() and final_path.stat().st_size < 1024:
+                final_path.unlink(missing_ok=True)
         except Exception:
             pass
-        _footer(canvas, doc_obj, brand_config)
+        raise RuntimeError(f"PDF build failed: {e!r}")
 
-    doc.build(story, onFirstPage=_on_page, onLaterPages=_on_page)
+    if not final_path.exists() or final_path.stat().st_size == 0:
+        raise RuntimeError("PDF generation produced no output file (post-build).")
+
+    return str(final_path)
+
+# -----------------------------------------------------------------------------
+# Tiny pure-Python fallback (no external deps)
+# -----------------------------------------------------------------------------
+class _MiniPDF:
+    PAGE_W = 612   # 8.5" * 72
+    PAGE_H = 792   # 11"  * 72
+    MARGIN_L = 54
+    MARGIN_R = 54
+    MARGIN_T = 86
+    MARGIN_B = 58
+    LEADING = 14
+    FONT_SIZE = 11
+
+    def __init__(self):
+        self.objects: List[bytes] = []
+        self.pages: List[int] = []
+        self.font_obj = self._add_object(self._font_object("F1", "Helvetica"))
+
+    def _add_object(self, body: bytes) -> int:
+        self.objects.append(body)
+        return len(self.objects)
+
+    @staticmethod
+    def _pdf_str(s: str) -> str:
+        safe = ''.join((c if 32 <= ord(c) < 127 and c not in '()' else ('\\' + c if c in '()' else '?')) for c in (s or ""))
+        return safe
+
+    @staticmethod
+    def _font_object(name: str, base: str) -> bytes:
+        return f"<< /Type /Font /Subtype /Type1 /BaseFont /{base} /Name /{name} >>".encode()
+
+    def _begin_page(self, content_stream: bytes) -> int:
+        content_obj = self._add_object(b"<< /Length %d >>\nstream\n" % len(content_stream) + content_stream + b"\nendstream")
+        page_dict = (
+            f"<< /Type /Page /Parent 0 0 R /MediaBox [0 0 {self.PAGE_W} {self.PAGE_H}] "
+            f"/Resources << /Font << /F1 {self.font_obj} 0 R >> >> /Contents {content_obj} 0 R >>"
+        ).encode()
+        page_obj = self._add_object(page_dict)
+        self.pages.append(page_obj)
+        return page_obj
+
+    def _header_footer_stream(self, page_num: int, page_count: int) -> str:
+        header = f"0.85 g 0 {self.PAGE_H-36} {self.PAGE_W} 24 re f 0 g\n"
+        footer = f"0.95 g 0 24 {self.PAGE_W} 18 re f 0 g\n"
+        label = f"Page {page_num} of {page_count}"
+        est_w = int(len(label) * (self.FONT_SIZE * 0.5))
+        x = self.PAGE_W - self.MARGIN_R - est_w
+        y = 30
+        text = f"BT /F1 {self.FONT_SIZE} Tf {x} {y} Td ({self._pdf_str(label)}) Tj ET\n"
+        return header + footer + text
+
+    def _text_block(self, line: str, x: int, y: int, leading: int) -> str:
+        l = self._pdf_str(line)
+        return f"BT /F1 {self.FONT_SIZE} Tf {x} {y} Td {leading} TL ({l}) Tj ET\n"
+
+    def add_page(self, lines: List[str], page_num: int, page_count: int):
+        buf: List[str] = [self._header_footer_stream(page_num, page_count)]
+        cursor_y = self.PAGE_H - self.MARGIN_T
+        x = self.MARGIN_L
+        for line in lines:
+            if cursor_y < self.MARGIN_B + 3 * self.LEADING:
+                break
+            buf.append(self._text_block(line, x, cursor_y, self.LEADING))
+            cursor_y -= self.LEADING
+        self._begin_page("".join(buf).encode("latin-1", errors="ignore"))
+
+    def save(self, path: str):
+        kids = " ".join(f"{p} 0 R" for p in self.pages)
+        pages_obj = self._add_object(f"<< /Type /Pages /Kids [{kids}] /Count {len(self.pages)} >>".encode())
+        fixed = [obj.replace(b"/Parent 0 0 R", f"/Parent {pages_obj} 0 R".encode()) for obj in self.objects]
+        self.objects = fixed
+        catalog_obj = self._add_object(f"<< /Type /Catalog /Pages {pages_obj} 0 R >>".encode())
+        with open(path, "wb") as f:
+            f.write(b"%PDF-1.4\n%\xe2\xe3\xcf\xd3\n")
+            offsets = [0]
+            for i, obj in enumerate(self.objects, start=1):
+                offsets.append(f.tell())
+                f.write(f"{i} 0 obj\n".encode()); f.write(obj); f.write(b"\nendobj\n")
+            xref_pos = f.tell()
+            f.write(f"xref\n0 {len(self.objects)+1}\n".encode())
+            f.write(b"0000000000 65535 f \n")
+            for off in offsets[1:]:
+                f.write(f"{off:010d} 00000 n \n".encode())
+            f.write(b"trailer\n"); f.write(f"<< /Size {len(self.objects)+1} /Root {catalog_obj} 0 R >>\n".encode())
+            f.write(b"startxref\n")
+            f.write(f"{xref_pos}\n".encode("ascii"))
+            f.write(b"%%EOF")
+
+def _generate_pdf_fallback(payload: Dict[str, Any], output_path: str, brand: Dict[str, Any]) -> str:
+    """Minimal dependency-free PDF if premium engine fails."""
+    lines: List[str] = []
+    title = payload.get("title") or (payload.get("blog", {}) or {}).get("headline") or "Content365 Pack"
+    lines += [_sanitize_for_font(title.upper()), ""]
+    intro = (payload.get("blog", {}) or {}).get("intro") or ""
+    if intro: lines += [_sanitize_for_font(intro), ""]
+    for p in (payload.get("blog", {}) or {}).get("body") or []:
+        lines += [_sanitize_for_font(str(p)), ""]
+    for b in payload.get("bullets", []) or (payload.get("blog", {}) or {}).get("bullets") or []:
+        lines.append(_sanitize_for_font(f"- {b}"))
+    cta = payload.get("cta_text") or (payload.get("blog", {}) or {}).get("cta") or ""
+    if cta: lines += ["", _sanitize_for_font(cta)]
+    # social
+    social = payload.get("social") or []
+    platforms = payload.get("platforms") or {}
+    if not social and platforms:
+        for name, data in platforms.items():
+            social.append({"name": name, "caption": data.get("caption",""), "hashtags": data.get("hashtags",[])})
+    if social:
+        lines += ["", "SOCIAL CAPTIONS:"]
+        for s in social:
+            lines.append(_sanitize_for_font(f"{s.get('name', 'Platform')}: {s.get('caption','')}"))
+            hts = s.get("hashtags") or []
+            if hts: lines.append(_sanitize_for_font("  " + " ".join(str(h) for h in hts)))
+    # crude wrap + paginate
+    pdf = _MiniPDF()
+    max_chars = 90
+    wrapped: List[str] = []
+    for ln in lines:
+        words = ln.split()
+        if not words:
+            wrapped.append("")
+            continue
+        cur: List[str] = []
+        cur_len = 0
+        for w in words:
+            add = (1 if cur else 0) + len(w)
+            if cur_len + add <= max_chars:
+                cur.append(w); cur_len += add
+            else:
+                wrapped.append(" ".join(cur)); cur=[w]; cur_len=len(w)
+        if cur: wrapped.append(" ".join(cur))
+    line_budget = int((pdf.PAGE_H - pdf.MARGIN_T - pdf.MARGIN_B) / pdf.LEADING)
+    pages = [wrapped[i:i+line_budget] for i in range(0, len(wrapped), line_budget)]
+    for i, pg in enumerate(pages, start=1):
+        pdf.add_page(pg, i, len(pages))
+    pdf.save(output_path)
     return output_path
+
+# -----------------------------------------------------------------------------
+# Compatibility: accept legacy/new payloads and normalize to premium shape
+# -----------------------------------------------------------------------------
+def _adapt_payload_legacy(payload: Dict[str, Any], brand_cfg: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    """
+    Accepts both new shape and legacy:
+      - New: {title, subtitle, blog_html, bullets, social[{name,caption,hashtags}], ...}
+      - Legacy A: {blog:{headline,intro,body[],bullets[],cta}, captions:{plat:text|{text}}, hashtags:{plat:[...]}}
+      - Legacy B: {blog:{title,intro,bullets,cta}, platforms:{plat:{caption,hashtags}}}
+    Produces the new shape for export_pdf_response.
+    """
+    if "blog_html" in payload or "social" in payload:
+        newp = dict(payload)
+    else:
+        blog = payload.get("blog") or {}
+        title = blog.get("headline") or blog.get("title") or payload.get("title") or "Content365 Pack"
+        subtitle = payload.get("subtitle") or ""
+        parts: List[str] = []
+        if blog.get("intro"):
+            parts.append(f"<p>{blog['intro']}</p>")
+        for p in (blog.get("body") or []):
+            parts.append(f"<p>{p}</p>")
+        blog_html = payload.get("blog_html") or "\n".join(parts)
+        bullets = blog.get("bullets") or payload.get("bullets") or []
+        cta = blog.get("cta") or payload.get("cta_text") or ""
+
+        social: List[Dict[str, Any]] = []
+        captions = payload.get("captions") or {}
+        hashtags = payload.get("hashtags") or {}
+        platforms = payload.get("platforms") or {}
+
+        if captions:
+            for plat, cap in captions.items():
+                text = cap.get("text") if isinstance(cap, dict) else str(cap or "")
+                hts = hashtags.get(plat) or []
+                social.append({"name": plat, "caption": text, "hashtags": hts})
+        elif platforms:
+            for plat, data in platforms.items():
+                data = data or {}
+                social.append({"name": plat, "caption": data.get("caption") or "", "hashtags": data.get("hashtags") or []})
+
+        newp = {
+            "title": title,
+            "subtitle": subtitle,
+            "blog_html": blog_html,
+            "bullets": bullets,
+            "cta_text": cta,
+            "social": social,
+        }
+
+    # --- brand normalization (defensive + defaults) ---
+    _cfg = (brand_cfg or payload.get("brand") or {}) or {}
+
+    brand_name = str(_cfg.get("brand_name") or "Content365").strip() or "Content365"
+    website    = str(_cfg.get("website")    or "content365.xyz").strip() or "content365.xyz"
+
+    logo_path  = _cfg.get("logo_path") or None
+    try:
+        logo_max_h = int(_cfg.get("logo_max_h", 22))
+    except Exception:
+        logo_max_h = 22
+
+    primary    = str(_cfg.get("primary_color") or "#0B6BF2").strip() or "#0B6BF2"
+    accent     = str(_cfg.get("accent_color")  or "#0B6BF2").strip() or "#0B6BF2"
+
+    newp["brand"] = {
+        "brand_name":    brand_name,
+        "website":       website,
+        "logo_path":     logo_path,
+        "logo_max_h":    logo_max_h,
+        "primary_color": primary,
+        "accent_color":  accent,
+        "qr_url":        _cfg.get("qr_url"),
+        "qr_size":       _cfg.get("qr_size", 0.7*inch),
+    }
+
+    if "footer" not in newp:
+        newp["footer"] = payload.get("footer") or f"© {datetime.now().year} {newp['brand']['brand_name']} · {newp['brand']['website']}"
+
+    return newp
+
+# -----------------------------------------------------------------------------
+# Compatibility wrapper for main.py + graceful fallback
+# -----------------------------------------------------------------------------
+def generate_pdf(payload: Dict[str, Any], output_path: str, brand_config: Optional[Dict[str, Any]] = None) -> str:
+    """
+    Entry point expected by main.py.
+    - Adapts legacy payloads to the premium shape.
+    - Uses premium ReportLab engine when available; otherwise uses the tiny pure-Python fallback.
+    - Writes exactly to `output_path`.
+    """
+    _g = globals()
+    adapt    = _g.get("_adapt_payload_legacy")
+    export   = _g.get("export_pdf_response")
+    fallback = _g.get("_generate_pdf_fallback")
+
+    if not (callable(adapt) and callable(fallback)):
+        raise RuntimeError(
+            "Internal wiring error: missing helpers — "
+            f"adapt={bool(callable(adapt))}, fallback={bool(callable(fallback))}"
+        )
+
+    output_path = str(output_path)
+    out_dir = str(Path(output_path).parent or "generated_pdfs")
+
+    # Normalize payload to the premium/new shape (works for legacy too)
+    premium_payload = adapt(payload or {}, brand_config or {})
+
+    # If ReportLab isn't actually available, skip premium entirely.
+    if not globals().get("_HAS_REPORTLAB", False):
+        return fallback(payload or {}, output_path, premium_payload.get("brand", {}))
+
+    # Premium path: build to a temp file in out_dir, then move to the exact requested path.
+    if not callable(export):
+        # Defensive: if export isn't callable for some reason, drop to fallback.
+        return fallback(payload or {}, output_path, premium_payload.get("brand", {}))
+
+    try:
+        tmp_path = export(premium_payload, out_dir=out_dir)
+        if os.path.abspath(tmp_path) != os.path.abspath(output_path):
+            Path(output_path).parent.mkdir(parents=True, exist_ok=True)
+            shutil.move(tmp_path, output_path)
+        return output_path
+    except Exception:
+        # Any premium failure gracefully falls back to the minimal writer.
+        return fallback(payload or {}, output_path, premium_payload.get("brand", {}))
+
+__all__ = ["export_pdf_response", "generate_pdf"]
+
+if __name__ == "__main__":  # lightweight self-test harness
+    import sys, json, argparse, subprocess
+    from pathlib import Path
+
+    def _placeholders():
+        """Create tiny placeholder logo/sample image if missing."""
+        static = Path("static"); static.mkdir(exist_ok=True)
+        logo = static / "logo.png"
+        sample = static / "sample.jpg"
+        if not logo.exists():
+            import base64
+            logo.write_bytes(base64.b64decode(
+                "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMB/XSF3d0AAAAASUVORK5CYII="
+            ))
+        if not sample.exists():
+            import base64
+            sample.write_bytes(base64.b64decode(
+                "/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDABALCwsLCxAQEBAQFBEUFRUVGBgYGBweHh4eHiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiL/2wBDARESEhISEhQVFBUaGhocHBwcIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiL/wAARCAAQABADASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAb/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAwT/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCPgA//2Q=="
+            ))
+
+    def _run_premium(out_dir: Path):
+        """Generate a premium PDF via export_pdf_response and the compat wrapper."""
+        _placeholders()
+        payload = {
+            "title": "Premium OK",
+            "subtitle": "Self-test (premium)",
+            "blog_html": """<p>Hello <b>premium</b></p><p><img src="static/sample.jpg" alt="Sample"/></p>""",
+            "cta_text": "https://content365.xyz",
+            "social": [{"name":"LinkedIn","caption":"Launching today","hashtags":["AI","SaaS"]}],
+            "footer": "© 2025 Content365 · content365.xyz",
+            "brand": {
+                "brand_name": "Content365",
+                "website": "content365.xyz",
+                "logo_path": "static/logo.png",
+                "logo_max_h": 22,
+                "primary_color": "#0B6BF2",
+                "accent_color": "#0B6BF2",
+                "qr_url": "https://content365.xyz",
+                "qr_size": 50,
+            },
+        }
+        out_dir.mkdir(parents=True, exist_ok=True)
+        p1 = export_pdf_response(payload, out_dir=str(out_dir))
+        dest = out_dir / "compat_test.pdf"
+        p2 = generate_pdf(payload, str(dest))
+        print("Premium export OK  ->", p1)
+        print("Compat wrapper OK ->", p2)
+
+    def _run_fallback(out_dir: Path):
+        """Simulate missing ReportLab in a child process to exercise tiny fallback writer."""
+        legacy_payload = {
+            "blog": {"headline": "LEGACY FALLBACK", "body": ["Line A", "Line B"]},
+            "footer": "© 2025 Content365 · content365.xyz",
+            "brand": {"brand_name": "Content365", "website": "content365.xyz"},
+        }
+        out_dir.mkdir(parents=True, exist_ok=True)
+        dest = (out_dir / "fallback_test.pdf").resolve()
+
+        # Child script: poison 'reportlab' import, then import our module and run generate_pdf
+        child_code = r"""
+import sys, types, json
+from pathlib import Path
+sys.modules['reportlab'] = types.ModuleType('reportlab')  # force fallback path
+from utils.pdf_generator import generate_pdf
+payload = json.loads(sys.argv[1])
+out = generate_pdf(payload, sys.argv[2])
+print(out)
+"""
+        proc = subprocess.run(
+            [sys.executable, "-c", child_code, json.dumps(legacy_payload), str(dest)],
+            cwd=str(Path.cwd()),
+            capture_output=True,
+            text=True,
+        )
+        if proc.returncode != 0:
+            print(proc.stdout)
+            print(proc.stderr, file=sys.stderr)
+            raise SystemExit(proc.returncode)
+        print("Fallback writer OK ->", proc.stdout.strip())
+
+    parser = argparse.ArgumentParser(description="Content365 PDF self-test harness")
+    parser.add_argument("--premium", action="store_true", help="Run only the premium (ReportLab) test")
+    parser.add_argument("--fallback", action="store_true", help="Run only the tiny fallback test")
+    parser.add_argument("--outdir", default="generated_pdfs", help="Output directory (default: generated_pdfs)")
+    args = parser.parse_args()
+
+    out_dir = Path(args.outdir)
+
+    if args.premium and args.fallback:
+        _run_premium(out_dir)
+        _run_fallback(out_dir)
+    elif args.premium:
+        _run_premium(out_dir)
+    elif args.fallback:
+        _run_fallback(out_dir)
+    else:
+        # default: run both
+        _run_premium(out_dir)
+        _run_fallback(out_dir)
