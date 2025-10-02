@@ -33,23 +33,29 @@ except Exception:
 # --- Internal modules ---
 # Robust utils import: package or local fallback
 try:
-    from Content365.utils.pdf_generator import generate_pdf  # package mode
+    from .utils.pdf_generator import generate_pdf  # relative import for local utils
 except Exception:
     from utils.pdf_generator import generate_pdf             # flat folder mode
 try:
-    from Content365.utils.prompt_loader import load_prompt_template
-except Exception:
-    load_prompt_template = None
+    from .utils.prompt_loader import load_prompt_template  # relative import for package mode
+except ImportError:
+    try:
+        from utils.prompt_loader import load_prompt_template  # flat folder mode
+    except Exception:
+        load_prompt_template = None
 try:
-    from Content365.utils.prompt_builder import build_prompt
+    from utils.prompt_builder import build_prompt
 except Exception:
     build_prompt = None
 try:
-    from Content365.utils.hashtag_rules import enforce_hashtag_rules as _enforce_hashtag_rules
+    from utils.hashtag_rules import enforce_hashtag_rules as _enforce_hashtag_rules
 except Exception:
     _enforce_hashtag_rules = None
 try:
-    from Content365.utils.send_email import send_pdf_email
+    try:
+        from utils.send_email import send_pdf_email
+    except ImportError:
+        from utils.send_email import send_pdf_email
 except Exception:
     send_pdf_email = None
 
@@ -354,16 +360,17 @@ async def _call_ai(prompt: str) -> Optional[str]:
                 if res: return res
             elif provider == "openrouter" and HAS_OR_KEY:
                 try:
-                    from Content365.utils.openrouter import generate_text as call_openrouter  # async
+                    from utils.openrouter import generate_text as call_openrouter  # async
                 except Exception:
                     from utils.openrouter import generate_text as call_openrouter
                 return await call_openrouter(prompt)
             elif provider == "gemini" and HAS_GEM_KEY:
                 try:
-                    from Content365.utils.gemini import generate_text as call_gemini         # async
-                except Exception:
                     from utils.gemini import generate_text as call_gemini
-                return await call_gemini(prompt)
+                except Exception:
+                    call_gemini = None
+                if call_gemini:
+                    return await call_gemini(prompt)
         except Exception:
             continue
     return None
@@ -667,9 +674,23 @@ async def healthz():
 @app.get("/health/pdf")
 async def health_pdf():
     try:
-        from Content365.utils.pdf_generator import get_pdf_engine_info
-        info = get_pdf_engine_info()
+        try:
+            from .utils.pdf_generator import get_pdf_engine_info
+        except ImportError:
+            from utils.pdf_generator import get_pdf_engine_info
+    except ImportError:
+        try:
+            from utils.pdf_generator import get_pdf_engine_info
+        except ImportError:
+            get_pdf_engine_info = None
     except Exception:
+        get_pdf_engine_info = None
+    if get_pdf_engine_info:
+        try:
+            info = get_pdf_engine_info()
+        except Exception:
+            info = {"engine": "unknown"}
+    else:
         info = {"engine": "unknown"}
     fonts = {
         "regular_exists": os.path.exists("assets/fonts/DejaVuSans.ttf"),
